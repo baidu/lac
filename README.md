@@ -1,6 +1,6 @@
 # 中文词法分析（LAC）
 
-本项目依赖v0.14.0版本。如果您的Paddle安装版本低于此要求，请按照[安装文档](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/build_and_install/index_cn.html)中的说明更新Paddle安装版本。
+本项目依赖Paddle v0.14.0版本。如果您的Paddle安装版本低于此要求，请按照[安装文档](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/build_and_install/index_cn.html)中的说明更新Paddle安装版本。
 
 为了达到和机器运行环境的最佳匹配，我们建议基于源码编译安装Paddle，后文也将展开讨论一些编译安装的细节。当然，如果您发现符合机器环境的预编译版本在官网发布，也可以尝试直接选用。
 
