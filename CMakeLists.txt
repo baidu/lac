@@ -17,7 +17,11 @@ endif(CMAKE_COMPILER_IS_GNUCXX)
 
 set(CMAKE_CXX_FLAGS "-O4 -g -pipe -W -Wall -Wno-unused-parameter -fPIC -fpermissive -std=gnu++11")
 
-get_filename_component(PADDLE_ABS_PATH ${PADDLE_ROOT} ABSOLUTE BASE_DIR ${CMAKE_BINARY_DIR})
+if (IS_ABSOLUTE ${PADDLE_ROOT})
+    set(PADDLE_ABS_PATH ${PADDLE_ROOT})
+else ()
+    get_filename_component(PADDLE_ABS_PATH ${CMAKE_BINARY_DIR}/${PADDLE_ROOT} ABSOLUTE)
+endif ()
 
 if (EXISTS ${PADDLE_ABS_PATH})
     message(STATUS "\$PADDLE_ROOT is set to '${PADDLE_ABS_PATH}'")
@@ -68,6 +72,7 @@ aux_source_directory(src SOURCE)
 
 add_library(lac ${SOURCE} include/ilac.h)
 add_executable(lac_demo test/src/lac_demo.cpp)
+set_target_properties(lac_demo PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 target_link_libraries(lac_demo lac)
 install(TARGETS lac DESTINATION ${PROJECT_SOURCE_DIR}/output/lib)
 install(TARGETS lac_demo DESTINATION ${PROJECT_SOURCE_DIR}/output/demo)
