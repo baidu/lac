@@ -132,7 +132,7 @@ docker run -it -v $PWD:/paddle -w /paddle paddle:dev /bin/bash # 启动shell
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DWITH_MKLDNN=OFF -DWITH_GPU=OFF -DWITH_FLUID_ONLY=ON ..
-make -j <num_cpu_cores> # 并发编译可提高速度
+make -j <num_cpu_cores> # 并发编译可提高速度, <num_cpu_cores>表示设置的并发编译线程数
 ```
 
 编译过程中，与LAC紧密相关的几个常用参数列在下表中。`WITH_AVX`和`WITH_MKL`选项会由`cmake`根据CPU的检测结果自动设定，其余参数如果需要设为默认值以外的值，需要手工指定。具体细节可以参考`CMakeLists.txt`。
@@ -162,7 +162,7 @@ Paddle官方也在维护Fluid预测库的预编译包，请看[这里](http://ww
 在第三步的`make`成功后，直接继续执行：
 
 ```shell
-make -j <num_cpu_cores> inference_lib_dist # 并发编译可提高速度
+make -j <num_cpu_cores> inference_lib_dist # 并发编译可提高速度, <num_cpu_cores>表示并发编译的线程数
 ```
 
 基于`cmake`直接编译时，Fluid预测库的编译产出会生成在`build/fluid_install_dir`目录。您可以把它拷贝到任何您喜欢的位置。
@@ -252,7 +252,7 @@ lac_destroy(lac_handle);
 
 #### 示例程序
 
-`output/lac_demo`是一个多线程的demo程序，其源码请参考`test/src/lac_demo.cpp`。Demo程序的使用方式为：
+`output/demo/lac_demo`是一个多线程的demo程序，其源码请参考`test/src/lac_demo.cpp`。Demo程序的使用方式为：
 
 ```shell
 ./lac_demo <conf_dir> <max_tokens> <thread_num>
