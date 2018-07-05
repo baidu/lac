@@ -46,7 +46,7 @@
 
 ## 模型
 
-词法分析任务的输入是一个字符串（我们后面使用『句子』来指代它），而输出是句子中的词边界和词性、实体类别。序列标注是词法分析的经典建模方式。我们使用基于GRU的网络结构学习特征，将学习到的特征接入CRF解码层完成序列标注。CRF解码层本质上是将传统CRF中的线性模型换成了非线性神经网络，基于句子级别的似然概率，因而能够更好的解决标记偏置问题。模型要点如下，具体细节请参考`pyton/train.py`代码。
+词法分析任务的输入是一个字符串（我们后面使用『句子』来指代它），而输出是句子中的词边界和词性、实体类别。序列标注是词法分析的经典建模方式。我们使用基于GRU的网络结构学习特征，将学习到的特征接入CRF解码层完成序列标注。CRF解码层本质上是将传统CRF中的线性模型换成了非线性神经网络，基于句子级别的似然概率，因而能够更好的解决标记偏置问题。模型要点如下，具体细节请参考`python/train.py`代码。
 1. 输入采用one-hot方式表示，每个字以一个id表示
 2. one-hot序列通过字表，转换为实向量表示的字向量序列；
 3. 字向量序列作为双向GRU的输入，学习输入序列的特征表示，得到新的特性表示序列，我们堆叠了两层双向GRU以增加学习能力；
@@ -133,7 +133,7 @@ docker run -it -v $PWD:/paddle -w /paddle paddle:dev /bin/bash # 启动shell
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DWITH_MKLDNN=OFF -DWITH_GPU=OFF -DWITH_FLUID_ONLY=ON ..
-make -j <num_cpu_cores> # 并发编译可提高速度
+make -j <num_cpu_cores> # 并发编译可提高速度, <num_cpu_cores>表示设置的并发编译线程数
 ```
 
 编译过程中，与LAC紧密相关的几个常用参数列在下表中。`WITH_AVX`和`WITH_MKL`选项会由`cmake`根据CPU的检测结果自动设定，其余参数如果需要设为默认值以外的值，需要手工指定。具体细节可以参考`CMakeLists.txt`。
@@ -163,7 +163,7 @@ Paddle官方也在维护Fluid预测库的预编译包，请看[这里](http://ww
 在第三步的`make`成功后，直接继续执行：
 
 ```shell
-make -j <num_cpu_cores> inference_lib_dist # 并发编译可提高速度
+make -j <num_cpu_cores> inference_lib_dist # 并发编译可提高速度, <num_cpu_cores>表示并发编译的线程数
 ```
 
 基于`cmake`直接编译时，Fluid预测库的编译产出会生成在`build/fluid_install_dir`目录。您可以把它拷贝到任何您喜欢的位置。
@@ -253,7 +253,7 @@ lac_destroy(lac_handle);
 
 #### 示例程序
 
-`output/lac_demo`是一个多线程的demo程序，其源码请参考`test/src/lac_demo.cpp`。Demo程序的使用方式为：
+`output/demo/lac_demo`是一个多线程的demo程序，其源码请参考`test/src/lac_demo.cpp`。Demo程序的使用方式为：
 
 ```shell
 ./lac_demo <conf_dir> <max_tokens> <thread_num>
