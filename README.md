@@ -30,6 +30,7 @@
 ├── python               # 训练使用的python文件
 ├── README.md            # 本文档
 ├── src                  # 源码
+├── technical-report     # 技术报告
 └── test                 # Demo程序
 ```
 
