@@ -46,14 +46,17 @@
 
 ## 引用
 
-如果您的学术工作成果中使用了LAC，请您增加下述引用（https://arxiv.org/abs/1807.01882）。我们非常欣慰LAC能够对您的学术工作带来帮助。
+如果您的学术工作成果中使用了LAC，请您增加下述引用。我们非常欣慰LAC能够对您的学术工作带来帮助。
 
-> @article{jiao2018LAC,
-> 	title={Chinese Lexical Analysis with Deep Bi-GRU-CRF Network},
-> 	author={Jiao, Zhenyu and Sun, Shuqi and Sun, Ke},
-> 	journal={arXiv preprint arXiv:1807.018825},
-> 	year={2018}
-> }
+```text
+@article{jiao2018LAC,
+	title={Chinese Lexical Analysis with Deep Bi-GRU-CRF Network},
+	author={Jiao, Zhenyu and Sun, Shuqi and Sun, Ke},
+	journal={arXiv preprint arXiv:1807.01882},
+	year={2018},
+	url={https://arxiv.org/abs/1807.01882}
+}
+```
 
 
 ## 模型
