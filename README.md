@@ -43,6 +43,17 @@
 
 我们把这个联合的中文词法分析解决方案命名为LAC。LAC既可以认为是**Lexical Analysis of Chinese**的首字母缩写，也可以认为是**LAC Analyzes Chinese**的递归缩写。
 
+## 引用
+
+如果您的学术工作成果中使用了LAC，请您增加下述引用（https://arxiv.org/abs/1807.01882）。我们非常欣慰LAC能够对您的学术工作带来帮助。
+
+> @article{jiao2018LAC,
+> 	title={Chinese Lexical Analysis with Deep Bi-GRU-CRF Network},
+> 	author={Jiao, Zhenyu and Sun, Shuqi and Sun, Ke},
+> 	journal={arXiv preprint arXiv:1807.018825},
+> 	year={2018}
+> }
+
 
 ## 模型
 
