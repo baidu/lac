@@ -28,21 +28,14 @@ MainTagger::MainTagger() {
 }
 
 MainTagger::~MainTagger() {
+    delete _scope;
+    _scope = NULL;
 
-    if (_scope != NULL) {
-        delete _scope;
-        _scope = NULL;
-    }
+    delete _executor;
+    _executor = NULL;
 
-    if (_executor != NULL) {
-        delete _executor;
-        _executor = NULL;
-    }
-
-    if (_place != NULL) {
-        delete _place;
-        _place = NULL;
-    }
+    delete _place;
+    _place = NULL;
 }
 
 MainTagger* MainTagger::create(const char* conf_dir) {
@@ -61,25 +54,19 @@ MainTagger* MainTagger::create(const char* conf_dir) {
 
     std::string word_dic_path = conf_dir_str + "/word.dic";
     if (handle->load_word_dic(word_dic_path) != _SUCCESS) {
-        if (handle != NULL) {
-            delete handle;
-        }
+        delete handle;
         return NULL;
     }
 
     std::string tag_dic_path = conf_dir_str + "/tag.dic";
     if (handle->load_tag_dic(tag_dic_path) != _SUCCESS) {
-        if (handle != NULL) {
-            delete handle;
-        }
+        delete handle;
         return NULL;
     }
 
     std::string model_path = conf_dir_str + "/model/";
     if (handle->init_model(model_path) != _SUCCESS) {
-        if (handle != NULL) {
-            delete handle;
-        }
+        delete handle;
         return NULL;
     }
 
