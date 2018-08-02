@@ -37,12 +37,9 @@
 
 ## 简介
 
-中文分词(Word Segmentation)是将连续的自然语言文本，切分出具有语义合理性和完整性的词汇序列的过程。因为在汉语中，词是承担语义的最基本单位，切词是文本分类、情感分析、信息检索等众多自然语言处理任务的基础。
-词性标注（Part-of-speech Tagging）是为自然语言文本中的每一个词汇赋予一个词性的过程，这里的词性包括名词、动词、形容词、副词等等。
-命名实体识别（Named Entity Recognition，NER）又称作“专名识别”，是指识别自然语言文本中具有特定意义的实体，主要包括人名、地名、机构名、专有名词等。
-我们将这三个任务统一成一个联合任务，称为词法分析任务，基于深度神经网络，利用海量标注语料进行训练，提供了一个端到端的解决方案。
+LAC是一个联合的词法分析模型，整体性地完成中文分词、词性标注、专名识别任务。LAC既可以认为是**Lexical Analysis of Chinese**的首字母缩写，也可以认为是**LAC Analyzes Chinese**的递归缩写。
 
-我们把这个联合的中文词法分析解决方案命名为LAC。LAC既可以认为是**Lexical Analysis of Chinese**的首字母缩写，也可以认为是**LAC Analyzes Chinese**的递归缩写。
+LAC基于一个堆叠的双向GRU结构，在长文本上准确复刻了百度AI开放平台上的[词法分析](http://ai.baidu.com/tech/nlp/lexical)算法。效果方面，分词、词性、专名识别的整体准确率95.5%；单独评估专名识别任务，F值87.1%（准确90.3，召回85.4%），总体略优于开放平台版本。在效果优化的基础上，LAC的模型简洁高效，内存开销不到100M，而速度则比百度AI开放平台提高了57%。 
 
 ## 引用
 
@@ -113,17 +110,15 @@ Paddle可以在符合要求的原生Linux环境或docker环境下编译，编译
 
 但是，无论是官方镜像，还是基于源码的默认编译命令，都不包含Fluid预测库部分。Fluid预测库的安装要放在单独的步骤解决（见下文第五步）。
 
-##### 第一步，克隆Paddle代码并检出 v0.14.0
+##### 第一步，克隆Paddle代码并检出`v0.14.0`版本
 
 ```shell
 git clone https://github.com/PaddlePaddle/Paddle.git
 cd Paddle
-git checkout release/0.14.0 # Paddle正式发布后，请检出v0.14.0
+git checkout v0.14.0
 ```
 
-Paddle v0.14.0是Paddle团队将要重点主推的版本。在这个截至本文档发布时，Paddle v0.14.0版还没有正式发布，目前可用的是一个release分支`release/0.14.0`。
-
-注意，`release/0.14.0`分支当前如果开启`mkldnn`的支持，会出现Segmentation Falut。这个问题在正式发布时也许会修复。而在这之前，请在关闭`mkldnn`支持的情况下编译，具体在后文详述。
+注意，`v0.14.0`版本当前如果开启`mkldnn`的支持，会出现Segmentation Falut。这个问题在后续版本也许会修复。而在这之前，请在关闭`mkldnn`支持的情况下编译，具体在后文详述。
 
 ##### 第二步（可选），构建docker镜像
 
@@ -134,13 +129,13 @@ Paddle v0.14.0是Paddle团队将要重点主推的版本。在这个截至本文
 docker build -t paddle:dev --build-arg UBUNTU_MIRROR='http://mirrors.ustc.edu.cn/ubuntu/' .
 ```
 
-Paddle的docker镜像依赖Ubuntu基础镜像，大量软件包基于apt-get安装，因此可以配置Ubuntu镜像加速这一过程。另外需要注意的是，GPU支持库要从`developer.download.nvidia.com`下载，但近期中国区服务器的文件Checksum出现了异常。如有遇到，可以更改Docker的DNS配置，尝试使用港澳台或者海外的DNS，以便从其他区域服务器下载相关库。
+Paddle的docker镜像依赖Ubuntu基础镜像，大量软件包基于apt-get安装，因此可以配置Ubuntu镜像加速这一过程。
 
 ##### 第三步，编译Paddle基础库
 
 这一步骤会产出Paddle的基础库，以及python版的wheel包。
 
-如前所述，当前`release/v0.14.0`分支需要关闭`mkldnn`库的支持。我们直接使用`cmake`命令完成编译。
+如前所述，`v0.14.0`版本需要关闭`mkldnn`库的支持。我们直接使用`cmake`命令完成编译。
 
 ```shell
 # 假设$PWD是Paddle代码所在目录
