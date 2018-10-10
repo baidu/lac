@@ -127,6 +127,12 @@ def parse_args():
         default="./conf/q2b.dic",
         help="The path of the word replacement Dictionary."
     )
+    parser.add_argument(
+        "--num_iterations",
+        type=int,
+        default=0,
+        help="The maximum number of iterations. If set to 0 (default), do not limit the number."
+    )
     args = parser.parse_args()
     if len(args.corpus_proportion_list) != len(args.corpus_type_list):
         sys.stderr.write(
@@ -134,6 +140,13 @@ def parse_args():
         )
         exit(-1)
     return args
+
+
+def print_arguments(args):
+    print('-----------  Configuration Arguments -----------')
+    for arg, value in sorted(vars(args).iteritems()):
+        print('%s: %s' % (arg, value))
+    print('------------------------------------------------')
 
 
 def to_lodtensor(data, place):
@@ -235,6 +248,7 @@ def train(args):
     batch_id = 0
     start_time = time.time()
     eval_list = []
+    iter = 0
     while True:
         full_batch = []
         cur_batch = []
@@ -297,8 +311,12 @@ def train(args):
                     return
                 else:
                     print "keep training!"
+        iter += 1
+        if (iter == args.num_iterations):
+            return
 
 
 if __name__ == "__main__":
     args = parse_args()
+    print_arguments(args)
     train(args)
