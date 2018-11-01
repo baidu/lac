@@ -229,8 +229,11 @@ make install # 编译产出在 ../output 下
     ```python
     python python/infer.py -h
     ```
+    查看预测脚本支持的不同选项，通过设置不同的选项，对自己的预测实现定制化。其中以下选项可能较为常用：
+    ```text
     --batch_size        预测时，每次同时预测的样本数，批量预测时，较大的batch_size有助于提高预测速度
     --test_data_dir     预测时作为输入的文件所在的目录
+    ```
 3、运行命令 `python python/infer.py` ，**需要注意：直接运行使用的是示例数据及默认参数，实际应用时请替换真实的数据并修改相应配置项。**
 
 #### C++数据接口说明
