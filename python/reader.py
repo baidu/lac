@@ -81,6 +81,8 @@ def test_reader(file_dir,
                     if len(line) == 0:
                         continue
                     seg_tag = line.rfind("\t")
+                    if seg_tag == -1:
+                        seg_tag = len(line)
                     word_part = line[0:seg_tag]
                     label_part = line[seg_tag + 1:]
                     word_idx = []

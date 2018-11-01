@@ -125,7 +125,7 @@ def infer(args):
                     word_index += 1
                 outstr += cur_full_word.encode('utf8') + "/" + cur_full_tag.encode('utf8') + " "    
                 outstr = outstr.strip()
-                full_out_str += outstr + "\t"
+                full_out_str += outstr + "\n"
             print full_out_str.strip()
 
 if __name__ == "__main__":
