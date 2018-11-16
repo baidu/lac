@@ -167,26 +167,28 @@ def to_lodtensor(data, place):
     return res
 
 
-def test(exe, chunk_evaluator, inference_program, test_data, place,
-         cur_fetch_list):
+def test(exe, chunk_evaluator, save_dirname, test_data, place):
     """
     Test the network in training.
     """
-    chunk_evaluator.reset()
-    for data in test_data():
-        word = to_lodtensor(map(lambda x: x[0], data), place)
-        target = to_lodtensor(map(lambda x: x[1], data), place)
-        result_list = exe.run(
-            inference_program,
-            feed={
-                "word": word,
-                "target": target
-            },
-            fetch_list=cur_fetch_list)
-        number_infer = np.array(result_list[0])
-        number_label = np.array(result_list[1])
-        number_correct = np.array(result_list[2])
-        chunk_evaluator.update(number_infer[0], number_label[0],
+    inference_scope = fluid.core.Scope()
+    with fluid.scope_guard(inference_scope):
+        [inference_program, feed_target_names, fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
+        chunk_evaluator.reset()
+        for data in test_data():
+            word = to_lodtensor(map(lambda x: x[0], data), place)
+            target = to_lodtensor(map(lambda x: x[1], data), place)
+            result_list = exe.run(
+                inference_program,
+                feed={
+                    "word": word,
+                    "target": target
+                },
+                fetch_list=fetch_targets)
+            number_infer = np.array(result_list[0])
+            number_label = np.array(result_list[1])
+            number_correct = np.array(result_list[2])
+            chunk_evaluator.update(number_infer[0], number_label[0],
                                number_correct[0])
     return chunk_evaluator.eval()
 
@@ -216,10 +218,7 @@ def train(args):
          num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
     chunk_evaluator = fluid.metrics.ChunkEvaluator()
     chunk_evaluator.reset()
-    inference_program = fluid.default_main_program().clone()
-    with fluid.program_guard(inference_program):
-        inference_program = fluid.io.get_inference_program(
-            [num_infer_chunks, num_label_chunks, num_correct_chunks])
+    
     train_reader_list = []
     corpus_num = len(args.corpus_type_list)
     for i in xrange(corpus_num):
@@ -281,15 +280,18 @@ def train(args):
             save_dirname = os.path.join(args.model_save_dir,
                                         "params_batch_%d" % batch_id)
             fluid.io.save_inference_model(save_dirname, ['word'], [crf_decode],
-                                          save_exe, main_program=inference_program)
+                                          save_exe)
+            temp_save_model = os.path.join(args.model_save_dir, "temp_model_for_test")
+            fluid.io.save_inference_model(temp_save_model, ['word', 'target'], [num_infer_chunks, num_label_chunks, num_correct_chunks], save_exe)
+
             precision, recall, f1_score = chunk_evaluator.eval()
             print("[train] batch_id:" + str(batch_id) + ", precision:" +
                   str(precision) + ", recall:" + str(recall) + ", f1:" +
                   str(f1_score))
             chunk_evaluator.reset()
             p, r, f1 = test(
-                exe, chunk_evaluator, inference_program, test_reader, place,
-                [num_infer_chunks, num_label_chunks, num_correct_chunks])
+                exe, chunk_evaluator, temp_save_model, test_reader, place)
+            chunk_evaluator.reset()
             print("[test] batch_id:" + str(batch_id) + ", precision:" +
                   str(p) + ", recall:" + str(r) + ", f1:" + str(f1))
             end_time = time.time()
