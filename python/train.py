@@ -205,10 +205,7 @@ def train(args):
          num_chunk_types=int(math.ceil((label_dict_len - 1) / 2.0)))
     chunk_evaluator = fluid.metrics.ChunkEvaluator()
     chunk_evaluator.reset()
-    #inference_program = fluid.default_main_program().clone()
-    #with fluid.program_guard(inference_program):
-    #    inference_program = fluid.io.get_inference_program(
-    #        [num_infer_chunks, num_label_chunks, num_correct_chunks])
+    
     train_reader_list = []
     corpus_num = len(args.corpus_type_list)
     for i in xrange(corpus_num):
