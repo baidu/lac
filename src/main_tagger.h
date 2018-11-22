@@ -18,7 +18,6 @@ limitations under the License. */
 #include <set>
 #include <vector>
 #include "lac_glb.h"
-#include "paddle/fluid/framework/init.h"
 #include "paddle/fluid/inference/io.h"
 
 namespace lac {
