@@ -25,15 +25,11 @@ Lac::Lac() {
 }
 
 Lac::~Lac() {
-    if (_main_tagger != NULL) {
-        delete _main_tagger;
-        _main_tagger = NULL;
-    }
+    delete _main_tagger;
+    _main_tagger = NULL;
 
-    if (_customization_tagger != NULL) {
-        delete _customization_tagger;
-        _customization_tagger = NULL;
-    }
+    delete _customization_tagger;
+    _customization_tagger = NULL;
 }
 
 Lac* Lac::create(const char* conf_dir) {
@@ -50,17 +46,13 @@ Lac* Lac::create(const char* conf_dir) {
 
     std::string q2b_dic_path = std::string(conf_dir) + "/q2b.dic";
     if (handle->load_q2b_dic(q2b_dic_path) != _SUCCESS) {
-        if (handle != NULL) {
-            delete handle;
-        }
+        delete handle;
         return NULL;
     }
 
     std::string strong_punc_path = std::string(conf_dir) + "/strong_punc.dic";
     if (handle->load_strong_punc(strong_punc_path) != _SUCCESS) {
-        if (handle != NULL) {
-            delete handle;
-        }
+        delete handle;
         return NULL;
     }
     handle->_strong_punc.insert("\n");
@@ -148,15 +140,11 @@ void Lac::destroy_buff(void* buff) const
 
         lac_buff_t* lac_buff = (lac_buff_t*) buff;
 
-        if (lac_buff->main_tagger_results != NULL) {
-            delete[] lac_buff->main_tagger_results;
-            lac_buff->main_tagger_results = NULL;
-        }
+        delete[] lac_buff->main_tagger_results;
+        lac_buff->main_tagger_results = NULL;
 
-        if (lac_buff->customization_tagger_results != NULL) {
-            delete[] lac_buff->customization_tagger_results;
-            lac_buff->customization_tagger_results = NULL;
-        }
+        delete[] lac_buff->customization_tagger_results;
+        lac_buff->customization_tagger_results = NULL;
 
         lac_buff->main_tagger_result_num = 0;
         lac_buff->customization_tagger_result_num = 0;
