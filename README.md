@@ -168,7 +168,7 @@ pip install build/python/dist/*.whl
 
 Fluid预测不包含在默认的官方镜像，以及默认的源码编译产出中。需要单独编译。
 
-Paddle官方也在维护Fluid预测库的预编译包，请看[这里](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/howto/inference/build_and_install_lib_cn.html)。如果有符合机器运行环境的预编译包，也可以尝试直接选用。
+Paddle官方也在维护Fluid预测库的预编译包，请看[这里](http://www.paddlepaddle.org/documentation/docs/zh/1.1/user_guides/howto/inference/build_and_install_lib_cn.html)。如果有符合机器运行环境的预编译包，也可以尝试直接选用。
 
 在第三步的`make`成功后，直接继续执行：
 
