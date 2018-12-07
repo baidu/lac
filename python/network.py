@@ -79,7 +79,7 @@ def lex_net(args, word_dict_len, label_dict_len):
                     low=-init_bound, high=init_bound)))
 
         input_feature = word_embedding
-        for i in xrange(bigru_num):
+        for i in range(bigru_num):
             bigru_output = _bigru_layer(input_feature)
             input_feature = bigru_output
 
