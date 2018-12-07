@@ -1,6 +1,6 @@
 # 中文词法分析（LAC）
 
-本项目依赖Paddle v0.14.0版本。如果您的Paddle安装版本低于此要求，请按照[安装文档](http://www.paddlepaddle.org/docs/develop/documentation/fluid/zh/build_and_install/index_cn.html)中的说明更新Paddle安装版本。
+本项目依赖Paddle v0.14.0版本。如果您的Paddle安装版本低于此要求，请按照[安装文档](http://paddlepaddle.org/documentation/docs/zh/1.0/beginners_guide/install/Start.html#paddlepaddle)中的说明更新Paddle安装版本。
 
 为了达到和机器运行环境的最佳匹配，我们建议基于源码编译安装Paddle，后文也将展开讨论一些编译安装的细节。当然，如果您发现符合机器环境的预编译版本在官网发布，也可以尝试直接选用。
 
@@ -8,16 +8,17 @@
 
 ## 目录
 
-- [代码结构](#代码结构)
-- [简介](#简介)
-- [模型](#模型)
-- [数据](#数据)
-- [安装](#安装)
-- [运行](#运行) 
-- [定制](#定制)
+- [项目结构](#项目结构)
+- [项目简介](#项目简介)
+- [在论文中引用LAC](#在论文中引用LAC)
+- [任务定义与建模](#任务定义与建模)
+- [数据格式](#数据格式)
+- [安装LAC](#安装LAC)
+- [运行LAC](#运行LAC) 
+- [定制化功能](#定制化功能)
 - [贡献代码](#贡献代码)
 
-## 代码结构
+## 项目结构
 
 ```text
 .
@@ -30,22 +31,34 @@
 ├── python               # 训练使用的python文件
 ├── README.md            # 本文档
 ├── src                  # 源码
+├── technical-report     # 技术报告
 └── test                 # Demo程序
 ```
 
-## 简介
+## 项目简介
 
-中文分词(Word Segmentation)是将连续的自然语言文本，切分出具有语义合理性和完整性的词汇序列的过程。因为在汉语中，词是承担语义的最基本单位，切词是文本分类、情感分析、信息检索等众多自然语言处理任务的基础。
-词性标注（Part-of-speech Tagging）是为自然语言文本中的每一个词汇赋予一个词性的过程，这里的词性包括名词、动词、形容词、副词等等。
-命名实体识别（Named Entity Recognition，NER）又称作“专名识别”，是指识别自然语言文本中具有特定意义的实体，主要包括人名、地名、机构名、专有名词等。
-我们将这三个任务统一成一个联合任务，称为词法分析任务，基于深度神经网络，利用海量标注语料进行训练，提供了一个端到端的解决方案。
+LAC是一个联合的词法分析模型，整体性地完成中文分词、词性标注、专名识别任务。LAC既可以认为是**Lexical Analysis of Chinese**的首字母缩写，也可以认为是**LAC Analyzes Chinese**的递归缩写。
 
-我们把这个联合的中文词法分析解决方案命名为LAC。LAC既可以认为是**Lexical Analysis of Chinese**的首字母缩写，也可以认为是**LAC Analyzes Chinese**的递归缩写。
+LAC基于一个堆叠的双向GRU结构，在长文本上准确复刻了百度AI开放平台上的[词法分析](http://ai.baidu.com/tech/nlp/lexical)算法。效果方面，分词、词性、专名识别的整体准确率95.5%；单独评估专名识别任务，F值87.1%（准确90.3，召回85.4%），总体略优于开放平台版本。在效果优化的基础上，LAC的模型简洁高效，内存开销不到100M，而速度则比百度AI开放平台提高了57%。 
+
+## 在论文中引用LAC
+
+如果您的学术工作成果中使用了LAC，请您增加下述引用。我们非常欣慰LAC能够对您的学术工作带来帮助。
+
+```text
+@article{jiao2018LAC,
+	title={Chinese Lexical Analysis with Deep Bi-GRU-CRF Network},
+	author={Jiao, Zhenyu and Sun, Shuqi and Sun, Ke},
+	journal={arXiv preprint arXiv:1807.01882},
+	year={2018},
+	url={https://arxiv.org/abs/1807.01882}
+}
+```
 
 
-## 模型
+## 任务定义与建模
 
-词法分析任务的输入是一个字符串（我们后面使用『句子』来指代它），而输出是句子中的词边界和词性、实体类别。序列标注是词法分析的经典建模方式。我们使用基于GRU的网络结构学习特征，将学习到的特征接入CRF解码层完成序列标注。CRF解码层本质上是将传统CRF中的线性模型换成了非线性神经网络，基于句子级别的似然概率，因而能够更好的解决标记偏置问题。模型要点如下，具体细节请参考`pyton/train.py`代码。
+词法分析任务的输入是一个字符串（我们后面使用『句子』来指代它），而输出是句子中的词边界和词性、实体类别。序列标注是词法分析的经典建模方式。我们使用基于GRU的网络结构学习特征，将学习到的特征接入CRF解码层完成序列标注。CRF解码层本质上是将传统CRF中的线性模型换成了非线性神经网络，基于句子级别的似然概率，因而能够更好的解决标记偏置问题。模型要点如下，具体细节请参考`python/train.py`代码。
 1. 输入采用one-hot方式表示，每个字以一个id表示
 2. one-hot序列通过字表，转换为实向量表示的字向量序列；
 3. 字向量序列作为双向GRU的输入，学习输入序列的特征表示，得到新的特性表示序列，我们堆叠了两层双向GRU以增加学习能力；
@@ -64,7 +77,7 @@
 | PER  | 人名     | LOC  | 地名     | ORG  | 机构名   | TIME | 时间     |
 
 
-## 数据
+## 数据格式
 
 训练使用的数据可以由用户根据实际的应用场景，自己组织数据。数据由两列组成，以制表符分隔，第一列是utf8编码的中文文本，第二列是对应每个字的标注，以空格分隔。我们采用IOB2标注体系，即以X-B作为类型为X的词的开始，以X-I作为类型为X的词的持续，以O表示不关注的字（实际上，在词性、专名联合标注中，不存在O）。示例如下：
 
@@ -87,7 +100,7 @@
 
     在训练阶段，这些工作由`python/train.py`调用`python/reader.py`完成；在预测阶段，由C++代码完成。
 
-## 安装
+## 安装LAC
 
 ### 安装Paddle
 
@@ -97,17 +110,15 @@ Paddle可以在符合要求的原生Linux环境或docker环境下编译，编译
 
 但是，无论是官方镜像，还是基于源码的默认编译命令，都不包含Fluid预测库部分。Fluid预测库的安装要放在单独的步骤解决（见下文第五步）。
 
-##### 第一步，克隆Paddle代码并检出 v0.14.0
+##### 第一步，克隆Paddle代码并检出`v0.14.0`版本
 
 ```shell
 git clone https://github.com/PaddlePaddle/Paddle.git
 cd Paddle
-git checkout release/0.14.0 # Paddle正式发布后，请检出v0.14.0
+git checkout v0.14.0
 ```
 
-Paddle v0.14.0是Paddle团队将要重点主推的版本。在这个截至本文档发布时，Paddle v0.14.0版还没有正式发布，目前可用的是一个release分支`release/0.14.0`。
-
-注意，`release/0.14.0`分支当前如果开启`mkldnn`的支持，会出现Segmentation Falut。这个问题在正式发布时也许会修复。而在这之前，请在关闭`mkldnn`支持的情况下编译，具体在后文详述。
+注意，`v0.14.0`版本当前如果开启`mkldnn`的支持，会出现Segmentation Falut。这个问题在后续版本也许会修复。而在这之前，请在关闭`mkldnn`支持的情况下编译，具体在后文详述。
 
 ##### 第二步（可选），构建docker镜像
 
@@ -118,13 +129,13 @@ Paddle v0.14.0是Paddle团队将要重点主推的版本。在这个截至本文
 docker build -t paddle:dev --build-arg UBUNTU_MIRROR='http://mirrors.ustc.edu.cn/ubuntu/' .
 ```
 
-Paddle的docker镜像依赖Ubuntu基础镜像，大量软件包基于apt-get安装，因此可以配置Ubuntu镜像加速这一过程。另外需要注意的是，GPU支持库要从`developer.download.nvidia.com`下载，但近期中国区服务器的文件Checksum出现了异常。如有遇到，可以更改Docker的DNS配置，尝试使用港澳台或者海外的DNS，以便从其他区域服务器下载相关库。
+Paddle的docker镜像依赖Ubuntu基础镜像，大量软件包基于apt-get安装，因此可以配置Ubuntu镜像加速这一过程。
 
 ##### 第三步，编译Paddle基础库
 
 这一步骤会产出Paddle的基础库，以及python版的wheel包。
 
-如前所述，当前`release/v0.14.0`分支需要关闭`mkldnn`库的支持。我们直接使用`cmake`命令完成编译。
+如前所述，`v0.14.0`版本需要关闭`mkldnn`库的支持。我们直接使用`cmake`命令完成编译。
 
 ```shell
 # 假设$PWD是Paddle代码所在目录
@@ -132,7 +143,7 @@ docker run -it -v $PWD:/paddle -w /paddle paddle:dev /bin/bash # 启动shell
 mkdir build
 cd build
 cmake -DCMAKE_BUILD_TYPE=Release -DWITH_MKLDNN=OFF -DWITH_GPU=OFF -DWITH_FLUID_ONLY=ON ..
-make -j <num_cpu_cores> # 并发编译可提高速度
+make -j <num_cpu_cores> # 并发编译可提高速度, <num_cpu_cores>表示设置的并发编译线程数
 ```
 
 编译过程中，与LAC紧密相关的几个常用参数列在下表中。`WITH_AVX`和`WITH_MKL`选项会由`cmake`根据CPU的检测结果自动设定，其余参数如果需要设为默认值以外的值，需要手工指定。具体细节可以参考`CMakeLists.txt`。
@@ -162,7 +173,7 @@ Paddle官方也在维护Fluid预测库的预编译包，请看[这里](http://ww
 在第三步的`make`成功后，直接继续执行：
 
 ```shell
-make -j <num_cpu_cores> inference_lib_dist # 并发编译可提高速度
+make -j <num_cpu_cores> inference_lib_dist # 并发编译可提高速度, <num_cpu_cores>表示并发编译的线程数
 ```
 
 基于`cmake`直接编译时，Fluid预测库的编译产出会生成在`build/fluid_install_dir`目录。您可以把它拷贝到任何您喜欢的位置。
@@ -186,7 +197,7 @@ make
 make install # 编译产出在 ../output 下
 ```
 
-## 运行
+## 运行LAC
 
 ### 训练部分
 
@@ -212,7 +223,20 @@ make install # 编译产出在 ../output 下
 
 预测部分基于Fluid预测库实现。
 
-#### 数据接口说明
+#### Python预测接口
+1. 准备输入:输入是utf8编码的句子，每个句子占一行。在预测脚本中，我们使用了`data`目录下的测试数据作为预测的默认输入。用户可以自行准备自己的要测试的输入。
+2. 查看预测支持的不同选项的含义，可以使用
+    ```python
+    python python/infer.py -h
+    ```
+    查看预测脚本支持的不同选项，通过设置不同的选项，对自己的预测实现定制化。其中以下选项可能较为常用：
+    ```text
+    --batch_size        预测时，每次同时预测的样本数，批量预测时，较大的batch_size有助于提高预测速度
+    --test_data_dir     预测时作为输入的文件所在的目录
+    ```
+3、运行命令 `python python/infer.py` ，**需要注意：直接运行使用的是示例数据及默认参数，实际应用时请替换真实的数据并修改相应配置项。**
+
+#### C++数据接口说明
 因为分词、词性标注和专名识别常常作为其他模块的基础依赖，因此我们提供了C语言的预测接口
 
 ```text
@@ -252,7 +276,7 @@ lac_destroy(lac_handle);
 
 #### 示例程序
 
-`output/lac_demo`是一个多线程的demo程序，其源码请参考`test/src/lac_demo.cpp`。Demo程序的使用方式为：
+`output/demo/lac_demo`是一个多线程的demo程序，其源码请参考`test/src/lac_demo.cpp`。Demo程序的使用方式为：
 
 ```shell
 ./lac_demo <conf_dir> <max_tokens> <thread_num>
@@ -285,7 +309,7 @@ offset：偏移量，单位为字节
 length：长度，单位为字节
 ```
 
-## 定制
+## 定制化功能
 
 在模型输出的基础上，LAC还支持用户配置定制化的专名类型输出。当定制化的专名词出现在输入query中时，如果该词与原有的词法分析结果不存在边界冲突，则会用定制化专名类型替代原有的标签。
 配置定制化专名的方法是修改conf/customization.dic。专名类型对应的词写在类型名称下方，专名名称形如[D:XXX]。例如：
