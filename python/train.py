@@ -144,7 +144,7 @@ def parse_args():
 
 def print_arguments(args):
     print('-----------  Configuration Arguments -----------')
-    for arg, value in sorted(vars(args).iteritems()):
+    for arg, value in sorted(vars(args).items()):
         print('%s: %s' % (arg, value))
     print('------------------------------------------------')
 
@@ -176,8 +176,8 @@ def test(exe, chunk_evaluator, save_dirname, test_data, place):
         [inference_program, feed_target_names, fetch_targets] = fluid.io.load_inference_model(save_dirname, exe)
         chunk_evaluator.reset()
         for data in test_data():
-            word = to_lodtensor(map(lambda x: x[0], data), place)
-            target = to_lodtensor(map(lambda x: x[1], data), place)
+            word = to_lodtensor(list(map(lambda x: x[0], data)), place)
+            target = to_lodtensor(list(map(lambda x: x[1], data)), place)
             result_list = exe.run(
                 inference_program,
                 feed={
@@ -188,8 +188,8 @@ def test(exe, chunk_evaluator, save_dirname, test_data, place):
             number_infer = np.array(result_list[0])
             number_label = np.array(result_list[1])
             number_correct = np.array(result_list[2])
-            chunk_evaluator.update(number_infer[0], number_label[0],
-                               number_correct[0])
+            chunk_evaluator.update(int(number_infer[0]), int(number_label[0]),
+                               int(number_correct[0]))
     return chunk_evaluator.eval()
 
 
@@ -221,7 +221,7 @@ def train(args):
     
     train_reader_list = []
     corpus_num = len(args.corpus_type_list)
-    for i in xrange(corpus_num):
+    for i in range(corpus_num):
         train_reader = paddle.batch(
             paddle.reader.shuffle(
                 reader.file_reader(args.traindata_dir,
@@ -251,7 +251,7 @@ def train(args):
     while True:
         full_batch = []
         cur_batch = []
-        for i in xrange(corpus_num):
+        for i in range(corpus_num):
             reader_itr = train_reader_itr_list[i]
             try:
                 cur_batch = next(reader_itr)
@@ -312,10 +312,11 @@ def train(args):
                 if cur_avg_f1 <= last_avg_f1:
                     return
                 else:
-                    print "keep training!"
+                    print("keep training!")
         iter += 1
         if (iter == args.num_iterations):
             return
+
 
 
 if __name__ == "__main__":
