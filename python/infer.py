@@ -1,8 +1,18 @@
+from __future__ import print_function
 import numpy as np
 import reader
 import paddle.fluid as fluid
 import paddle
 import argparse
+import time
+import sys
+import io
+
+if sys.version_info > (3,):
+    sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding='utf-8')
+else:
+    reload(sys)
+    sys.setdefaultencoding("utf8")
 
 def parse_args():
     parser = argparse.ArgumentParser("Run inference.")
@@ -48,7 +58,7 @@ def parse_args():
 
 def print_arguments(args):
     print('-----------  Configuration Arguments -----------')
-    for arg, value in sorted(vars(args).iteritems()):
+    for arg, value in sorted(vars(args).items()):
         print('%s: %s' % (arg, value))
     print('------------------------------------------------')
 
@@ -103,7 +113,7 @@ def infer(args):
             lod_info = (crf_decode.lod())[0]
             np_data = np.array(crf_decode)
             assert len(data) == len(lod_info) - 1
-            for sen_index in xrange(len(data)):
+            for sen_index in range(len(data)):
                 assert len(data[sen_index][0]) == lod_info[
                     sen_index + 1] - lod_info[sen_index]
                 word_index = 0
@@ -111,22 +121,22 @@ def infer(args):
                 cur_full_word = ""
                 cur_full_tag = ""
                 words = word_list[sen_index]
-                for tag_index in xrange(lod_info[sen_index],
+                for tag_index in range(lod_info[sen_index],
                                         lod_info[sen_index + 1]):
                     cur_word = words[word_index]
                     cur_tag = id2label_dict[str(np_data[tag_index][0])]
                     if cur_tag.endswith("-B") or cur_tag.endswith("O"):
                         if len(cur_full_word) != 0:
-                            outstr += cur_full_word.encode('utf8') + "/" + cur_full_tag.encode('utf8') + " "
+                            outstr += cur_full_word + u"/" + cur_full_tag + u" "
                         cur_full_word = cur_word
                         cur_full_tag = get_real_tag(cur_tag)
                     else:
                         cur_full_word += cur_word
                     word_index += 1
-                outstr += cur_full_word.encode('utf8') + "/" + cur_full_tag.encode('utf8') + " "    
+                outstr += cur_full_word + u"/" + cur_full_tag + u" "    
                 outstr = outstr.strip()
-                full_out_str += outstr + "\n"
-            print full_out_str.strip()
+                full_out_str += outstr + u"\n"
+            print(full_out_str.strip(), file=sys.stdout)
 
 if __name__ == "__main__":
     args = parse_args()
