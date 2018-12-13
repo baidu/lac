@@ -8,7 +8,7 @@ message(STATUS "C compiler: ${CMAKE_C_COMPILER}, version: "
 
 if(CMAKE_COMPILER_IS_GNUCXX)
     execute_process(COMMAND ${CMAKE_CXX_COMPILER} -dumpversion OUTPUT_VARIABLE GCC_VERSION)
-    if (GCC_VERSION VERSION_LESS 4.8.2)
+    if (GCC_VERSION VERSION_LESS 4.8)
         message(FATAL_ERROR "A gcc compiler with a version >= 4.8.2 is needed.")
     endif()
 else()
