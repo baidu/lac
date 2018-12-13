@@ -185,6 +185,7 @@ make -j <num_cpu_cores> inference_lib_dist # 并发编译可提高速度, <num_c
 LAC依赖Paddle的Fluid预测库。编译、运行环境与Paddle相关环境保持一致，以避免各种意外的出现。LAC本身的编译操作相对简单：
 
 ```shell
+# 注意，lac模块中的conf目录下的很多文件是采用git-lfs存储，使用git clone时，需要先安装[git-lfs](https://help.github.com/articles/versioning-large-files/)
 git clone https://github.com/baidu/lac.git
 cd lac
 mkdir build
