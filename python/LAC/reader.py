@@ -20,6 +20,7 @@
 The file_reader converts raw corpus to input.
 """
 import argparse
+import logging
 import __future__
 import io
 
@@ -61,6 +62,7 @@ class Dataset(object):
         self.id2label_dict = load_kv_dict(args.label_dict_path)
         self.word_replace_dict = load_kv_dict(args.word_rep_dict_path)
         self.oov_id = self.word2id_dict['OOV']
+        self.tag_type = args.tag_type
 
     @property
     def vocab_size(self):
@@ -75,6 +77,34 @@ class Dataset(object):
     def get_num_examples(self, filename):
         """num of line of file"""
         return sum(1 for line in open(filename, "r"))
+
+    def parse_seg(self, line):
+        tags = []
+        words = line.strip().split()
+
+        for word in words:
+            if len(word) == 1:
+                tags.append('-S')
+            else:
+                tags += ['-B'] + ['-I'] * (len(word) - 2) + ['-E']
+
+        return "".join(words), tags
+
+    def parse_tag(self, line):
+        tags = []
+        words = []
+
+        items = line.strip().split()
+        for item in items:
+            word = item[:item.rfind('/')]
+            tag = item[item.rfind('/') + 1:]
+            if '/' not in item or len(word) == 1 or len(tag) == 0:
+                logging.warning("Data type error: %s" % line.strip())
+                return [], []
+            tags += [tag + '-B'] + [tag + '-I'] * len(word - 1)
+            words.append(word)
+
+        return "".join(words), tags
 
     def word_to_ids(self, words):
         """convert word to word index"""
@@ -114,10 +144,18 @@ class Dataset(object):
                 for line in fread:
                     if (len(line.strip()) == 0):
                         continue
+                    if self.tag_type == 'seg':
+                        words, labels = self.parse_seg(line)
+                        print(words, labels)
+                    elif self.tag_type == 'tag':
+                        words, labels = self.parse_tag(line)
+                    else:
+                        words, labels = line.strip("\n").split("\t")
+                        words = words.split("\002")
+                        labels = labels.split("\002")
 
-                    words, labels = line.strip("\n").split("\t")
-                    word_ids = self.word_to_ids(words.split("\002"))
-                    label_ids = self.label_to_ids(labels.split("\002"))
+                    word_ids = self.word_to_ids(words)
+                    label_ids = self.label_to_ids(labels)
                     assert len(word_ids) == len(label_ids)
                     yield word_ids, label_ids
             fread.close()

@@ -1,13 +1,18 @@
 ## LAC的Python调用
 
 ### 安装说明
+
 代码兼容Python2/3
+
 - 全自动安装: `pip install lac`
 - 半自动下载：先下载[http://pypi.python.org/pypi/lac/](http://pypi.python.org/pypi/lac/) ，解压后运行 `python setup.py install`
 
 ### 功能与使用
+
 #### 分词
+
 - 代码示例：
+
 ```python
 from LAC import LAC
 
@@ -22,6 +27,7 @@ seg_result = lac.run(text)
 texts = [u"LAC是个优秀的分词工具", u"百度是一家高科技公司"]
 seg_result = lac.run(texts)
 ```
+
 - 输出：
 
 ```text
@@ -30,7 +36,9 @@ seg_result = lac.run(texts)
 ```
 
 #### 词性标注与实体识别
+
 - 代码示例：
+
 ```python
 from LAC import LAC
 
@@ -45,12 +53,14 @@ lac_result = lac.run(text)
 texts = [u"LAC是个优秀的分词工具", u"百度是一家高科技公司"]
 lac_result = lac.run(texts)
 ```
+
 - 输出：
 
 >每个句子的输出其切词结果word_list以及对每个单词的标注tags_list，其格式为（word_list, tags_list)
+
 ```text
-【单样本】： seg_result = ([百度, 是, 一家, 高科技, 公司], [ORG, v, m, n, n])
-【批量样本】：seg_result = [
+【单样本】： lac_result = ([百度, 是, 一家, 高科技, 公司], [ORG, v, m, n, n])
+【批量样本】：lac_result = [
                     ([百度, 是, 一家, 高科技, 公司], [ORG, v, m, n, n]),
                     ([LAC, 是, 个, 优秀, 的, 分词, 工具], [nr, v, q, a, u, n, n])
                 ]
@@ -60,7 +70,7 @@ lac_result = lac.run(texts)
 
 | 标签 | 含义     | 标签 | 含义     | 标签 | 含义     | 标签 | 含义     |
 | ---- | -------- | ---- | -------- | ---- | -------- | ---- | -------- |
-| n    | 普通名词 | f    | 方位名词 | s    | 处所名词  | nw   | 作品名   |
+| n    | 普通名词 | f    | 方位名词 | s    | 处所名词 | nw   | 作品名   |
 | nz   | 其他专名 | v    | 普通动词 | vd   | 动副词   | vn   | 名动词   |
 | a    | 形容词   | ad   | 副形词   | an   | 名形词   | d    | 副词     |
 | m    | 数量词   | q    | 量词     | r    | 代词     | p    | 介词     |
@@ -109,25 +119,70 @@ custom_result = lac.run("春天的花开秋天的风以及冬天的落阳")
 春天/SEASON 的/u 花/n 开/v 秋天的风/n 以及/c 冬天/TIME 的/u 落/n 阳/n
 ```
 
-
 #### 增量训练
-针对用户自己提供的数据，进行增量训练，首先需要将数据转换为输入的格式，样例可参考：https://baidu-nlp.bj.bcebos.com/lexical_analysis-dataset-2.0.0.tar.gz
+
+我们也提供了增量训练的接口，用户可以使用自己的数据，进行增量训练，首先需要将数据转换为模型输入的格式，并且所有数据文件均为"UTF-8"编码：
+
+##### 1. 分词训练
+
+- 数据样例
+
+  >  与大多数开源分词数据集格式一致，使用空格作为单词切分标记，如下所示：
+
+```text
+LAC 是 个 优秀 的 分词 工具 。
+百度 是 一家 高科技 公司 。
+春天 的 花开 秋天 的 风 以及 冬天 的 落阳 。
+```
 
 - 代码示例
-```python
-from LAC import LAC
-LAC = LAC()
 
-# 训练和测试数据集
-train_file = "./data/train.tsv"
-test_file = "./data/test.tsv"
+```Python
+from LAC import LAC
+
+# 选择使用分词模型
+LAC = LAC(mode = 'seg')
+
+# 训练和测试数据集，格式一致
+train_file = "./data/seg_train.tsv"
+test_file = "./data/seg_test.tsv"
 lac.train(model_save_dir='./my_model/',train_data=train_file, test_data=test_file)
 
 # 使用自己训练好的模型
-my_lac = LAC(model_path='my_model')
+my_lac = LAC(model_path='my_seg_model')
 ```
 
-## 在论文中引用LAC
+##### 2. 词法分析训练
+
+- 样例数据
+
+  > 在分词数据的基础上，每个单词以“/type”的形式标记其词性或实体类别。值得注意的是，词法分析的训练目前仅支持标签体系与我们一致的数据。后续也会开放支持新的标签体系，敬请期待。
+
+```text
+LAC/nz 是/v 个/q 优秀/a 的/u 分词/n 工具/n 。/w
+百度/ORG 是/v 一家/m 高科技/n 公司/n 。/w
+春天/TIME 的/u 花开/v 秋天/TIME 的/u 风/n 以及/c 冬天/TIME 的/u 落阳/n 。/w
+```
+
+- 代码示例
+
+```Python
+from LAC import LAC
+
+# 选择使用默认的词法分析模型
+LAC = LAC()
+
+# 训练和测试数据集，格式一致
+train_file = "./data/lac_train.tsv"
+test_file = "./data/lac_test.tsv"
+lac.train(model_save_dir='./my_model/',train_data=train_file, test_data=test_file)
+
+# 使用自己训练好的模型
+my_lac = LAC(model_path='my_lac_model')
+```
+
+在论文中引用LAC
+---
 
 如果您的学术工作成果中使用了LAC，请您增加下述引用。我们非常欣慰LAC能够对您的学术工作带来帮助。
 

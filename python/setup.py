@@ -51,7 +51,7 @@ with open("README.md", "r", encoding='utf8') as fh:
 
 setup(
     name="LAC",
-    version="0.1.1",
+    version="0.1.2",
     author="Baidu NLP",
     author_email="nlp-fenci@baidu.com",
     description="A chinese lexical analysis tool by Baidu NLP.",

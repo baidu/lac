@@ -67,6 +67,7 @@ class DefaultArgs(object):
         self.bigru_num = config.getint("NETWORK_CONFIG", "bigru_num")
 
         # train's parameter
+        self.tag_type = config.get("TRAIN_CONFIG", "tag_type")
         self.random_seed = config.getint("TRAIN_CONFIG", "random_seed")
         self.batch_size = config.getint("TRAIN_CONFIG", "batch_size")
         self.epoch = config.getint("TRAIN_CONFIG", "epoch")
