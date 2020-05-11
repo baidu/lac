@@ -1,0 +1,43 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:app="http://schemas.android.com/apk/res-auto"
+    xmlns:tools="http://schemas.android.com/tools"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:gravity="center_horizontal"
+    android:orientation="vertical"
+    tools:context=".MainActivity">
+
+    <TextView
+        android:id="@+id/sample_text"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="测试Lac"
+        android:layout_marginTop="80dp"
+        android:textSize="24dp" />
+
+    <EditText
+        android:id="@+id/input_text"
+        android:layout_marginTop="60dp"
+        android:layout_width="300dp"
+        android:layout_height="50dp"
+        android:hint="在这里输入文字"
+        android:textSize="20sp"
+        />
+
+    <TextView
+        android:id="@+id/cut_result"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="30dp"
+        android:text="测试"
+        android:textSize="20sp" />
+    <Button
+        android:id="@+id/cut_button"
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="100dp"
+        android:text="分词"
+        android:textSize="20sp" />
+
+</LinearLayout>

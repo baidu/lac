@@ -1,21 +1,9 @@
-## 工具介绍
-LAC全称Lexical Analysis of Chinese，是百度自然语言处理部研发的一款联合的词法分析工具，实现中文分词、词性标注、专名识别等功能。该工具具有以下特点与优势：
-- **效果好**：通过深度学习模型联合学习分词、词性标注、专名识别任务，整体效果F1值超过0.91，词性标注F1值超过0.94，专名识别F1值超过0.85，效果业内领先。
-- **效率高**：精简模型参数，结合Paddle预测库的性能优化，CPU单线程性能达800QPS，效率业内领先。
-- **可定制**：实现简单可控的干预机制，精准匹配用户词典对模型进行干预。词典支持长片段形式，使得干预更为精准。
-- **调用便捷**：**支持一键安装**，同时提供了Python、Java和C++调用接口与调用示例，实现快速调用和集成。
-- **支持移动端**: 定制超轻量级模型，体积仅为2M，主流千元手机单线程性能达200QPS，满足大多数移动端应用的需求，同等体积量级效果业内领先。
-
-## 安装与使用
-在此我们主要介绍Python安装与使用，其他语言使用：
-- [C++](./c++/README.md)
-- [JAVA](./java/README.md)
-- [Android](./Android/README.md)
+## LAC的Python调用
 
 ### 安装说明
 代码兼容Python2/3
 - 全自动安装: `pip install lac`
-- 半自动下载：先下载[http://pypi.python.org/pypi/lac/](http://pypi.python.org/pypi/lac/)，解压后运行 `python setup.py install`
+- 半自动下载：先下载[http://pypi.python.org/pypi/lac/](http://pypi.python.org/pypi/lac/) ，解压后运行 `python setup.py install`
 
 ### 功能与使用
 #### 分词
@@ -30,7 +18,7 @@ lac = LAC(mode='seg')
 text = u"LAC是个优秀的分词工具"
 seg_result = lac.run(text)
 
-# 批量样本输入, 输入为多个句子组成的list，平均速率会更快
+# 批量样本输入, 输入为多个句子组成的list，速率会更快
 texts = [u"LAC是个优秀的分词工具", u"百度是一家高科技公司"]
 seg_result = lac.run(texts)
 ```
@@ -68,7 +56,7 @@ lac_result = lac.run(texts)
                 ]
 ```
 
-词性和专名类别标签集合如下表，其中我们将最常用的4个专名类别标记为大写的形式：
+词性和专名类别标签集合如下表，其中我们将最常用的4个专名类别标记为大写的形式。
 
 | 标签 | 含义     | 标签 | 含义     | 标签 | 含义     | 标签 | 含义     |
 | ---- | -------- | ---- | -------- | ---- | -------- | ---- | -------- |
@@ -87,14 +75,17 @@ lac_result = lac.run(texts)
 
 - 词典文件示例
 
-  > 这里仅作为示例，展现各种需求情况下的结果
+  > 这里仅作为示例，展现各种需求情况下的结果。后续还将开放以通配符配置词典的模式，敬请期待。
+
 ```text
 春天/SEASON
 花/n 开/v
 秋天的风
 落 阳
 ```
+
 - 代码示例
+
 ```python
 from LAC import LAC
 lac = lac()
@@ -107,20 +98,23 @@ custom_result = lac.run("春天的花开秋天的风以及冬天的落阳")
 ```
 
 - 以输入“春天的花开秋天的风以及冬天的落阳”为例，原本输出结果为：
+
 ```text
 春天/TIME 的/u 花开/v 秋天/TIME 的/u 风/n 以及/c 冬天/TIME 的/u 落阳/n
 ```
+
 - 添加示例中的词典文件后的结果为：
 
 ```text
 春天/SEASON 的/u 花/n 开/v 秋天的风/n 以及/c 冬天/TIME 的/u 落/n 阳/n
 ```
 
+
 #### 增量训练
 针对用户自己提供的数据，进行增量训练，首先需要将数据转换为输入的格式，样例可参考：https://baidu-nlp.bj.bcebos.com/lexical_analysis-dataset-2.0.0.tar.gz
 
 - 代码示例
-```Python
+```python
 from LAC import LAC
 LAC = LAC()
 
@@ -131,19 +125,6 @@ lac.train(model_save_dir='./my_model/',train_data=train_file, test_data=test_fil
 
 # 使用自己训练好的模型
 my_lac = LAC(model_path='my_model')
-```
-
-文件结构
----
-
-```text
-.
-├── python                      # Python调用的脚本
-├── c++                         # C++调用的代码
-├── java                        # Java调用的代码
-├── Android                     # Android调用的示例
-├── README.md                   # 本文件
-└── CMakeList.txt               # 编译C++和Java调用的脚本
 ```
 
 ## 在论文中引用LAC
@@ -159,7 +140,3 @@ my_lac = LAC(model_path='my_model')
 	url={https://arxiv.org/abs/1807.01882}
 }
 ```
-
-贡献代码
----
-我们欢迎开发者向LAC贡献代码。如果您开发了新功能，发现了bug……欢迎提交Pull request与issue到Github。
