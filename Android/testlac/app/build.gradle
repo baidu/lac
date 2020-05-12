@@ -15,7 +15,7 @@ android {
 
         externalNativeBuild {
             cmake {
-                cppFlags "-std=c++11"
+                cppFlags ""
                 arguments "-DANDROID_STL=c++_shared"
             }
         }
