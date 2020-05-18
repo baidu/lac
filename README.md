@@ -16,6 +16,7 @@ LAC全称Lexical Analysis of Chinese，是百度自然语言处理部研发的�
 代码兼容Python2/3
 - 全自动安装: `pip install lac`
 - 半自动下载：先下载[http://pypi.python.org/pypi/lac/](http://pypi.python.org/pypi/lac/)，解压后运行 `python setup.py install`
+- 安装完成后可在命令行输入`lac`或`lac --segonly`启动服务，进行快速体验
 
 ### 功能与使用
 #### 分词
@@ -142,7 +143,7 @@ LAC = LAC(mode = 'seg')
 # 训练和测试数据集，格式一致
 train_file = "./data/seg_train.tsv"
 test_file = "./data/seg_test.tsv"
-lac.train(model_save_dir='./my_model/',train_data=train_file, test_data=test_file)
+lac.train(model_save_dir='./my_seg_model/',train_data=train_file, test_data=test_file)
 
 # 使用自己训练好的模型
 my_lac = LAC(model_path='my_seg_model')
@@ -170,7 +171,7 @@ LAC = LAC()
 # 训练和测试数据集，格式一致
 train_file = "./data/lac_train.tsv"
 test_file = "./data/lac_test.tsv"
-lac.train(model_save_dir='./my_model/',train_data=train_file, test_data=test_file)
+lac.train(model_save_dir='./my_lac_model/',train_data=train_file, test_data=test_file)
 
 # 使用自己训练好的模型
 my_lac = LAC(model_path='my_lac_model')

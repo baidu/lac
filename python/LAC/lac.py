@@ -57,6 +57,7 @@ class LAC(object):
         self.args.use_cuda = use_cuda
         self.model_path = model_path
         config = AnalysisConfig(self.args.init_checkpoint)
+        config.disable_glog_info()
 
         if use_cuda:
             self.place = fluid.CUDAPlace(
@@ -91,14 +92,13 @@ class LAC(object):
             如果mode=='seg', 则只返回分词结果
             如果mode=='lac', 则同时返回分词与标签
         """
-
-        if isinstance(texts, text_type):
+        if isinstance(texts, list) or isinstance(texts, tuple):
+            self.batch = True
+        else:
             if len(texts.strip()) == 0:
-                return ([], []) if return_tag else []
+                return ([], []) if self.return_tag else []
             texts = [texts]
             self.batch = False
-        else:
-            self.batch = True
 
         tensor_words = self.texts2tensor(texts)
         crf_decode = self.predictor.run([tensor_words])
@@ -166,20 +166,25 @@ class LAC(object):
             shutil.rmtree(os.path.join(model_save_dir, 'conf'))
         shutil.copytree(os.path.join(self.model_path, 'conf'),
                         os.path.join(model_save_dir, 'conf'))
-        self.model_path = model_save_dir
 
-        # 训练结束装载新模型
-        config = AnalysisConfig(os.path.join(model_save_dir, 'model'))
+        self.load_model(model_save_dir)
+
+    def load_model(self, model_dir):
+        """装载预训练的模型"""
+        use_cuda = self.args.use_cuda
+        self.args = utils.DefaultArgs(model_dir)
+        self.args.use_cuda = use_cuda
+        self.dataset = reader.Dataset(self.args)
+        self.return_tag = self.args.tag_type != 'seg'
+
+        self.model_path = model_dir
+        config = AnalysisConfig(os.path.join(model_dir, 'model'))
+        config.disable_glog_info()
         if self.args.use_cuda:
             config.enable_use_gpu(memory_pool_init_size_mb=500,
                                   device_id=int(
                                       os.getenv('FLAGS_selected_gpus', '0')),
                                   )
-        self.predictor = create_paddle_predictor(config)
-
-    def load_model(self, model_dir):
-        """装载预训练的模型"""
-        config = AnalysisConfig(model_dir)
         self.predictor = create_paddle_predictor(config)
 
     def load_customization(self, customization_file):

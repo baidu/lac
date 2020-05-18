@@ -1,2 +1,0 @@
-conf/* filter=lfs diff=lfs merge=lfs -text
-conf/model/* filter=lfs diff=lfs merge=lfs -text

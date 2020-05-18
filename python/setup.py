@@ -36,14 +36,14 @@ try:
 
         if "paddlepaddle-gpu" in paddle_pkgs:
             install_requires = ['paddlepaddle-gpu>=1.6']
-        elif "paddlepaddle" in paddle_pkgs:
-            install_requires = ['paddlepaddle>=1.6']
-        else:
+        elif "paddlepaddle-tiny" in paddle_pkgs:
             install_requires = ['paddlepaddle-tiny>=1.6']
+        else:
+            install_requires = ['paddlepaddle>=1.6']
 
 
 except ImportError:
-    install_requires = ['paddlepaddle-tiny>=1.6']
+    install_requires = ['paddlepaddle>=1.6']
 
 
 with open("README.md", "r", encoding='utf8') as fh:
@@ -51,7 +51,7 @@ with open("README.md", "r", encoding='utf8') as fh:
 
 setup(
     name="LAC",
-    version="0.1.2",
+    version="2.0.0",
     author="Baidu NLP",
     author_email="nlp-fenci@baidu.com",
     description="A chinese lexical analysis tool by Baidu NLP.",
