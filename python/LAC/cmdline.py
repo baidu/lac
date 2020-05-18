@@ -18,28 +18,45 @@
 
 """
 本文件提供了命令行工具的入口逻辑。
-
-Authors: huangdingbang(huangdingbang@baidu.com)
-Date:    2019/09/28 21:00:01
 """
 
 from __future__ import absolute_import
 from __future__ import print_function
 from __future__ import unicode_literals
 
+import argparse
+parser = argparse.ArgumentParser(description='LAC Init Argments')
+parser.add_argument('--segonly', action='store_true',
+                    help='run segment only if setting')
+args = parser.parse_args()
 
 __all__ = [
     'main',
 ]
 
 
-def main(args=None):
+def main(args=args):
     """主程序入口"""
-    from . import demo
-    if args is None:
-        # 如果未传入命令行参数，则直接从sys中读取，并过滤掉第0位的入口文件名
-        import sys
-        args = sys.argv[1:]
+    from LAC import LAC
+    from LAC._compat import strdecode
+    import sys
 
-    hello = demo.Hello()
-    return hello.run(*args)
+    if args.segonly:
+        lac = LAC(mode='seg')
+    else:
+        lac = LAC()
+
+    while True:
+        line = sys.stdin.readline()
+        if not line:
+            break
+
+        line = strdecode(line.strip())
+        if args.segonly:
+            print(u" ".join(lac.run(line)))
+        else:
+            words, tags = lac.run(line)
+            print(u" ".join(u"%s/%s" % (word, tag)
+                            for word, tag in zip(words, tags)))
+
+    return 0

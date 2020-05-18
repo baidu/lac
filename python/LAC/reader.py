@@ -79,6 +79,7 @@ class Dataset(object):
         return sum(1 for line in open(filename, "r"))
 
     def parse_seg(self, line):
+        """convert segment data to lac data format"""
         tags = []
         words = line.strip().split()
 
@@ -91,6 +92,7 @@ class Dataset(object):
         return "".join(words), tags
 
     def parse_tag(self, line):
+        """convert tagging data to lac data format"""
         tags = []
         words = []
 
@@ -98,10 +100,10 @@ class Dataset(object):
         for item in items:
             word = item[:item.rfind('/')]
             tag = item[item.rfind('/') + 1:]
-            if '/' not in item or len(word) == 1 or len(tag) == 0:
+            if '/' not in item or len(word) == 0 or len(tag) == 0:
                 logging.warning("Data type error: %s" % line.strip())
                 return [], []
-            tags += [tag + '-B'] + [tag + '-I'] * len(word - 1)
+            tags += [tag + '-B'] + [tag + '-I'] * (len(word) - 1)
             words.append(word)
 
         return "".join(words), tags
@@ -146,7 +148,6 @@ class Dataset(object):
                         continue
                     if self.tag_type == 'seg':
                         words, labels = self.parse_seg(line)
-                        print(words, labels)
                     elif self.tag_type == 'tag':
                         words, labels = self.parse_tag(line)
                     else:
