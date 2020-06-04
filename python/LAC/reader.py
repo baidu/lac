@@ -52,7 +52,7 @@ def load_kv_dict(dict_path,
 class Dataset(object):
     """data reader"""
 
-    def __init__(self, args):
+    def __init__(self, args, dev_count = 10):
         # read dict
         self.word2id_dict = load_kv_dict(
             args.word_dict_path, reverse=True, value_func=int)
@@ -63,6 +63,9 @@ class Dataset(object):
         self.word_replace_dict = load_kv_dict(args.word_rep_dict_path)
         self.oov_id = self.word2id_dict['OOV']
         self.tag_type = args.tag_type
+
+        self.args = args
+        self.dev_count = dev_count
 
     @property
     def vocab_size(self):
@@ -76,7 +79,7 @@ class Dataset(object):
 
     def get_num_examples(self, filename):
         """num of line of file"""
-        return sum(1 for line in open(filename, "r"))
+        return sum(1 for line in open(filename, "rb"))
 
     def parse_seg(self, line):
         """convert segment data to lac data format"""
@@ -142,7 +145,7 @@ class Dataset(object):
                     word_ids = self.word_to_ids(words)
                     yield (word_ids,)
             else:
-                next(fread)
+                cnt = 0
                 for line in fread:
                     if (len(line.strip()) == 0):
                         continue
@@ -159,6 +162,14 @@ class Dataset(object):
                     label_ids = self.label_to_ids(labels)
                     assert len(word_ids) == len(label_ids)
                     yield word_ids, label_ids
+                    cnt += 1
+                if mode == 'train':
+                    pad_num = self.dev_count - (cnt % self.args.batch_size) % self.dev_count
+                    for i in range(pad_num):
+                        if self.tag_type == 'seg':
+                            yield [self.oov_id], [self.label2id_dict['-S']]
+                        else:
+                            yield [self.oov_id], [self.label2id_dict['O']]
             fread.close()
 
         return wrapper

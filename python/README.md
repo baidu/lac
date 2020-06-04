@@ -142,7 +142,7 @@ LAC 是 个 优秀 的 分词 工具 。
 from LAC import LAC
 
 # 选择使用分词模型
-LAC = LAC(mode = 'seg')
+lac = LAC(mode = 'seg')
 
 # 训练和测试数据集，格式一致
 train_file = "./data/seg_train.tsv"
@@ -171,7 +171,7 @@ LAC/nz 是/v 个/q 优秀/a 的/u 分词/n 工具/n 。/w
 from LAC import LAC
 
 # 选择使用默认的词法分析模型
-LAC = LAC()
+lac = LAC()
 
 # 训练和测试数据集，格式一致
 train_file = "./data/lac_train.tsv"

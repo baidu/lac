@@ -81,7 +81,7 @@ endif()
 
 # for jni lib
 if (WITH_JNILIB)
-include_directories(./java/cpp ${JAVA_HOME}/include ${JAVA_HOME}/include/linux/ ${JAVA_HOME}/include/darwin)
+include_directories(./java/cpp ${JAVA_HOME}/include ${JAVA_HOME}/include/linux/ ${JAVA_HOME}/include/darwin ${JAVA_HOME}/include/win32)
 add_library(lacjni SHARED ${SOURCE} ./java/cpp/lac_jni.cpp)
 set_target_properties(lacjni PROPERTIES INSTALL_RPATH_USE_LINK_PATH TRUE)
 endif()

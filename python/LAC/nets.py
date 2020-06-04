@@ -223,7 +223,7 @@ def create_pyreader(args, file_name, feed_list, place,
     if for_test:
         pyreader.decorate_sample_list_generator(
             paddle.batch(
-                reader.file_reader(file_name),
+                reader.file_reader(file_name, mode='test'),
                 batch_size=args.batch_size
             ),
             places=place
@@ -286,7 +286,17 @@ def do_train(args):
     train_program = fluid.default_main_program()
     startup_program = fluid.default_startup_program()
 
-    dataset = Dataset(args)
+    # init executor
+    if args.use_cuda:
+        place = fluid.CUDAPlace(int(os.getenv('FLAGS_selected_gpus', '0')))
+        dev_count = fluid.core.get_cuda_device_count()
+    else:
+        dev_count = min(multiprocessing.cpu_count(), args.cpu_num)
+        os.environ['CPU_NUM'] = str(dev_count)
+        place = fluid.CPUPlace()
+
+    dataset = Dataset(args, dev_count)
+
     with fluid.program_guard(train_program, startup_program):
         train_program.random_seed = args.random_seed
         startup_program.random_seed = args.random_seed
@@ -300,14 +310,6 @@ def do_train(args):
                 learning_rate=args.base_learning_rate)
             optimizer.minimize(train_ret["avg_cost"])
 
-    # init executor
-    if args.use_cuda:
-        place = fluid.CUDAPlace(int(os.getenv('FLAGS_selected_gpus', '0')))
-        dev_count = fluid.core.get_cuda_device_count()
-    else:
-        dev_count = min(multiprocessing.cpu_count(), args.cpu_num)
-        os.environ['CPU_NUM'] = str(dev_count)
-        place = fluid.CPUPlace()
 
     train_reader = create_pyreader(args, file_name=args.train_data,
                                    feed_list=train_ret['feed_list'],
