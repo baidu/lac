@@ -84,8 +84,8 @@ class LAC(object):
         """执行模型预测过程
 
         Args:
-            texts: 模型输入的文本的文本，可以是一个Unicode编码的字符串或者
-                   是由Unicode编码字符串组成的List
+            texts: 模型输入的文本，一个Unicode编码的字符串或者
+                   由Unicode编码字符串组成的List
 
         Returns:
             返回LAC处理结果
