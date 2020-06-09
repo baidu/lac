@@ -10,7 +10,7 @@
 
 - 安装完成后可在命令行输入`lac`或`lac --segonly`启动服务，进行快速体验
 
-  > 国内网络可使用百度源，安装速率更快：`pip install lac -i https://mirror.baidu.com/pypi/simple`
+  > 国内网络使用百度源安装，安装速率更快：`pip install lac -i https://mirror.baidu.com/pypi/simple`
 
 ### 功能与使用
 
