@@ -31,28 +31,29 @@ def load_kv_dict(dict_path,
     Load key-value dict from file
     """
     result_dict = {}
-    for line in io.open(dict_path, "r", encoding='utf8'):
-        terms = line.strip("\n").split(delimiter)
-        if len(terms) != 2:
-            continue
-        if reverse:
-            value, key = terms
-        else:
-            key, value = terms
-        # if key in result_dict:
-        #     raise KeyError("key duplicated with [%s]" % (key))
-        if key_func:
-            key = key_func(key)
-        if value_func:
-            value = value_func(value)
-        result_dict[key] = value
+    with io.open(dict_path, "r", encoding='utf8') as file:
+        for line in file:
+            terms = line.strip("\n").split(delimiter)
+            if len(terms) != 2:
+                continue
+            if reverse:
+                value, key = terms
+            else:
+                key, value = terms
+            # if key in result_dict:
+            #     raise KeyError("key duplicated with [%s]" % (key))
+            if key_func:
+                key = key_func(key)
+            if value_func:
+                value = value_func(value)
+            result_dict[key] = value
     return result_dict
 
 
 class Dataset(object):
     """data reader"""
 
-    def __init__(self, args, dev_count = 10):
+    def __init__(self, args, dev_count=10):
         # read dict
         self.word2id_dict = load_kv_dict(
             args.word_dict_path, reverse=True, value_func=int)
@@ -163,8 +164,10 @@ class Dataset(object):
                     assert len(word_ids) == len(label_ids)
                     yield word_ids, label_ids
                     cnt += 1
+
                 if mode == 'train':
-                    pad_num = self.dev_count - (cnt % self.args.batch_size) % self.dev_count
+                    pad_num = self.dev_count - \
+                        (cnt % self.args.batch_size) % self.dev_count
                     for i in range(pad_num):
                         if self.tag_type == 'seg':
                             yield [self.oov_id], [self.label2id_dict['-S']]
