@@ -89,7 +89,7 @@ void* thread_worker(void *arg) {
                 cout << result[i].word <<" ";
             }
             else{
-                cout << result[i].word << "\001" << result[i].tag << " ";
+                cout << result[i].word << "/" << result[i].tag << " ";
             }
         }
         cout << endl;

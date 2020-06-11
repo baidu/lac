@@ -14,8 +14,8 @@ limitations under the License. */
 
 #include "lac.h"
 #include "lac_util.h"
-#include "paddle_api.h"
 #include "lac_custom.h"
+#include "paddle_api.h"
 
 /* LAC构造函数：初始化、装载模型和词典 */
 LAC::LAC(const std::string& model_path, CODE_TYPE type)
@@ -40,8 +40,9 @@ LAC::LAC(const std::string& model_path, CODE_TYPE type)
     paddle::AnalysisConfig config;
     // config.SwitchIrOptim(false);       // 关闭优化
     config.EnableMKLDNN();
-    config.SetModel(model_path + "/model");
     config.DisableGpu();
+    config.DisableGlogInfo();
+    config.SetModel(model_path + "/model");
     config.SetCpuMathLibraryNumThreads(1);
     config.SwitchUseFeedFetchOps(false);
     this->_predictor = paddle::CreatePaddlePredictor<paddle::AnalysisConfig>(config);
@@ -193,7 +194,7 @@ std::vector<std::vector<OutputItem>> LAC::run(const std::vector<std::string> &qu
 
         parse_targets(this->_labels, this->_seq_words_batch[i], this->_results);
         this->_labels.clear();
-        _results_batch.push_back(this->_results);
+        this->_results_batch.push_back(this->_results);
     }
 
     return this->_results_batch;

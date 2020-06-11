@@ -30,20 +30,20 @@ try:
     import paddle
 
     # 若版本太低，设置版本的更新
-    if paddle.__version__ < '1.6.0':
-        installed_packages = pkg_resources.working_set
-        paddle_pkgs = [i.key for i in installed_packages if "paddle" in i.key]
+    #if paddle.__version__ < '1.6.0':
+    installed_packages = pkg_resources.working_set
+    paddle_pkgs = [i.key for i in installed_packages if "paddle" in i.key]
 
-        if "paddlepaddle-gpu" in paddle_pkgs:
-            install_requires = ['paddlepaddle-gpu>=1.6']
-        elif "paddlepaddle-tiny" in paddle_pkgs:
-            install_requires = ['paddlepaddle-tiny>=1.6']
-        else:
-            install_requires = ['paddlepaddle>=1.6']
+    if "paddlepaddle-gpu" in paddle_pkgs:
+        install_requires = ['paddlepaddle-gpu>=1.6,<2.0']
+    elif "paddlepaddle-tiny" in paddle_pkgs:
+        install_requires = ['paddlepaddle-tiny>=1.6,<2.0']
+    else:
+        install_requires = ['paddlepaddle>=1.6,<2.0']
 
 
 except ImportError:
-    install_requires = ['paddlepaddle>=1.6']
+    install_requires = ['paddlepaddle>=1.6,<2.0']
 
 
 with open("README.md", "r", encoding='utf8') as fh:
@@ -51,7 +51,7 @@ with open("README.md", "r", encoding='utf8') as fh:
 
 setup(
     name="LAC",
-    version="2.0.1",
+    version="2.0.2",
     author="Baidu NLP",
     author_email="nlp-fenci@baidu.com",
     description="A chinese lexical analysis tool by Baidu NLP.",
