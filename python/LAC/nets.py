@@ -315,8 +315,8 @@ def do_train(args):
                                    feed_list=train_ret['feed_list'],
                                    place=place,
                                    reader=dataset)
-
-    test_reader = create_pyreader(args, file_name=args.test_data,
+    if args.test_data:
+        test_reader = create_pyreader(args, file_name=args.test_data,
                                   feed_list=train_ret['feed_list'],
                                   place=place,
                                   reader=dataset,
@@ -327,8 +327,8 @@ def do_train(args):
 
     if args.init_checkpoint:
         utils.init_pretraining_params(exe, args.init_checkpoint, train_program)
-
-    test_process(exe, test_program, test_reader, train_ret)
+    if args.test_data:
+        test_process(exe, test_program, test_reader, train_ret)
     if dev_count > 1:
         # multi cpu/gpu config
         exec_strategy = fluid.ExecutionStrategy()
@@ -352,6 +352,6 @@ def do_train(args):
                 feed=data[0],
             )
             step += 1
-
-    test_process(exe, test_program, test_reader, train_ret)
+    if args.test_data:
+        test_process(exe, test_program, test_reader, train_ret)
     return test_program, train_ret['crf_decode']
