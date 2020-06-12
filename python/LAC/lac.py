@@ -22,6 +22,7 @@
 
 import os
 import shutil
+import logging
 
 import numpy as np
 import paddle.fluid as fluid
@@ -151,8 +152,8 @@ class LAC(object):
             test_data: 测试数据路径，若为None则不进行测试
         """
         self.args.train_data = train_data
-        if test_data:
-            self.args.test_data = test_data
+        self.args.test_data = test_data
+        logging.info("Start Training!")
         test_program, fetch_list = nets.do_train(self.args)
 
         fluid.io.save_inference_model(os.path.join(model_save_dir, 'model'),
@@ -168,6 +169,8 @@ class LAC(object):
                         os.path.join(model_save_dir, 'conf'))
 
         self.load_model(model_save_dir)
+        logging.info("Finish Training!")
+
 
     def load_model(self, model_dir):
         """装载预训练的模型"""
