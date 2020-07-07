@@ -103,7 +103,7 @@ from LAC import LAC
 lac = LAC()
 
 # 装载干预词典, sep参数表示词典文件采用的分隔符，为None时默认使用空格或制表符'\t'
-lac.load_customization('custom.txt')
+lac.load_customization('custom.txt', sep=None)
 
 # 干预后结果
 custom_result = lac.run(u"春天的花开秋天的风以及冬天的落阳")
