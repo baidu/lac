@@ -79,7 +79,7 @@ class LAC(object):
 
         self.custom = None
         self.batch = False
-        self.return_tag = mode != 'seg'
+        self.return_tag = self.args.tag_type != 'seg'
 
     def run(self, texts):
         """执行模型预测过程
@@ -143,25 +143,32 @@ class LAC(object):
             batch_out.append([sent_out, tags_out])
         return batch_out
 
-    def train(self, model_save_dir, train_data, test_data=None):
+    def train(self, model_save_dir, train_data, test_data=None, iter_num=10, thread_num=10):
         """执行模型增量训练
 
         Args:
             model_save_dir: 训练结束后模型保存的路径
             train_data: 训练数据路径
             test_data: 测试数据路径，若为None则不进行测试
+            iter_num: 训练数据的迭代次数
+            thread_num: 执行训练的线程数
         """
         self.args.train_data = train_data
         self.args.test_data = test_data
+        self.args.epoch = iter_num
+        self.args.cpu_num = thread_num
         logging.info("Start Training!")
-        test_program, fetch_list = nets.do_train(self.args)
 
-        fluid.io.save_inference_model(os.path.join(model_save_dir, 'model'),
-                                      ['words'],
-                                      fetch_list,
-                                      self.exe,
-                                      main_program=test_program,
-                                      )
+        scope = fluid.core.Scope()
+        with fluid.scope_guard(scope):
+            test_program, fetch_list = nets.do_train(self.args)
+
+            fluid.io.save_inference_model(os.path.join(model_save_dir, 'model'),
+                                          ['words'],
+                                          fetch_list,
+                                          self.exe,
+                                          main_program=test_program,
+                                          )
         # 拷贝配置文件
         if os.path.exists(os.path.join(model_save_dir, 'conf')):
             shutil.rmtree(os.path.join(model_save_dir, 'conf'))
@@ -190,10 +197,15 @@ class LAC(object):
                                   )
         self.predictor = create_paddle_predictor(config)
 
-    def load_customization(self, customization_file):
-        """装载用户词典"""
+    def load_customization(self, customization_file, sep=None):
+        """装载用户词典
+
+        Args:
+            texts: 用户词典路径
+            sep: 表示词典中，短语片段的分隔符，默认为空格' '或制表符'\t'
+        """
         self.custom = Customization()
-        self.custom.load_customization(customization_file)
+        self.custom.load_customization(customization_file, sep)
 
     def texts2tensor(self, texts):
         """将文本输入转为Paddle输入的Tensor

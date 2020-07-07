@@ -25,7 +25,6 @@ using namespace std;
 LAC* g_lac_handle = NULL;   // 多线程共用模型
 int g_line_count = 0;
 long g_usec_used = 0;
-
 pthread_mutex_t g_mutex;
 
 /* 计时器用于测试性能 */
@@ -112,12 +111,12 @@ int main(int argc, char* argv[]) {
     // 默认路径
     string model_path = argv[1];
     int thread_num = atoi(argv[2]);
-    
+
     // 装载模型
     g_lac_handle = new LAC(model_path);
-
     // 启动多线程
     pthread_t ids[thread_num];
+    pthread_mutex_init(&g_mutex, NULL);
     TimeUsing t;
     for (int i = 0; i < thread_num; i++) {
         pthread_create(&ids[i], NULL, thread_worker, NULL);
