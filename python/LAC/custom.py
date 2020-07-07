@@ -25,8 +25,10 @@ import logging
 
 try:
     from .ahocorasick import Ahocorasick
+    from ._compat import strdecode
 except:
     from ahocorasick import Ahocorasick
+    from _compat import strdecode
 
 
 class Customization(object):
@@ -39,12 +41,17 @@ class Customization(object):
         self.ac = None
         pass
 
-    def load_customization(self, filename):
+    def load_customization(self, filename, sep=None):
         """装载人工干预词典"""
         self.ac = Ahocorasick()
         with open(filename, 'r', encoding='utf8') as f:
             for line in f:
-                words = line.strip().split()
+                if sep == None:
+                    words = line.strip().split()
+                else:
+                    sep = strdecode(sep)
+                    words = line.strip().split(sep)
+
                 if len(words) == 0:
                     continue
 

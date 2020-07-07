@@ -283,8 +283,8 @@ def do_train(args):
     Returns:
         训练产出的program及模型输出变量
     """
-    train_program = fluid.default_main_program()
-    startup_program = fluid.default_startup_program()
+    train_program = fluid.Program()
+    startup_program = fluid.Program()
 
     # init executor
     if args.use_cuda:
