@@ -4,18 +4,18 @@
 
 ### 1. 环境准备
 
-  ##### 1. 安装 Visual Studio和Visual Studio Code 
+##### 1. 安装 Visual Studio和Visual Studio Code 
 
-    - 官网下载地址：[https://visualstudio.microsoft.com/zh-hans/](https://visualstudio.microsoft.com/zh-hans/)
-    -  Visual Studio安装可参考：[VS安装文档](https://docs.microsoft.com/zh-cn/visualstudio/install/install-visual-studio?view=vs-2019)，工作负载中勾选`C++桌面开发`的选项
+- 官网下载地址：[https://visualstudio.microsoft.com/zh-hans/](https://visualstudio.microsoft.com/zh-hans/)
+-  Visual Studio安装可参考：[VS安装文档](https://docs.microsoft.com/zh-cn/visualstudio/install/install-visual-studio?view=vs-2019)，工作负载中勾选`C++桌面开发`的选项
 
-  ##### 2. 下载Paddle相关的依赖库
+##### 2. 下载Paddle相关的依赖库
 
 - 可于[Paddle官网](https://www.paddlepaddle.org.cn)下载已经编译好的[Windows预测库](https://www.paddlepaddle.org.cn/documentation/docs/zh/advanced_guide/inference_deployment/inference/windows_cpp_inference.html)（`fluid_inference.tgz`），选择`cpu_avx_mkl`或`cpu_avx_openblas`版本进行下载并解压
 
 ### 2. 编译运行
 
-​	编译过程使用`Visual Studio Code`进行，该工具能够帮助我们完成cmake编译等过程，并且在众多系统中表现出较好的兼容性，该流程同样适用于Mac和Linux系统。
+编译过程使用`Visual Studio Code`进行，该工具能够帮助我们完成cmake编译等过程，并且在众多系统中表现出较好的兼容性，该流程同样适用于Mac和Linux系统。
 
 ##### 1. 在VS Code中安装Cmake相关插件
 
@@ -27,10 +27,10 @@
 
 ##### 3. 设置编译选项
 
-	- 设置`PADDLE_ROOT`为[Windows预测库](https://www.paddlepaddle.org.cn/documentation/docs/zh/advanced_guide/inference_deployment/inference/windows_cpp_inference.html)下载解压后的文件夹路径
-	- 若需编译**JAVA的链接库**，需将`WITH_JNILIB`选项设为`ON`，同时设置`JAVA_HOME`路径，如下图所示
-	- CMake选择Release模式
-	- 编译器选项选择Visual Studio amd64【若无该选项则选择`扫描工具包`或检查`Visual Studio`安装情况】
+- 设置`PADDLE_ROOT`为[Windows预测库](https://www.paddlepaddle.org.cn/documentation/docs/zh/advanced_guide/inference_deployment/inference/windows_cpp_inference.html)下载解压后的文件夹路径
+- 若需编译**JAVA的链接库**，需将`WITH_JNILIB`选项设为`ON`，同时设置`JAVA_HOME`路径，如下图所示
+- CMake选择Release模式
+- 编译器选项选择Visual Studio amd64【若无该选项则选择`扫描工具包`或检查`Visual Studio`安装情况】
 
 <img src="./image/modify_cmakelists.png" alt="open_lac" style="zoom:80%;" />
 
