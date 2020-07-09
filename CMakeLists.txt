@@ -218,6 +218,8 @@ install(FILES ${PROJECT_SOURCE_DIR}/java/com/baidu/nlp/LAC.java
         DESTINATION ${PROJECT_SOURCE_DIR}/output/java/com/baidu/nlp/)
 install(FILES ${PROJECT_SOURCE_DIR}/java/LacDemo.java
         DESTINATION ${PROJECT_SOURCE_DIR}/output/java)
+install(FILES ${PROJECT_SOURCE_DIR}/java/LacMulti.java
+        DESTINATION ${PROJECT_SOURCE_DIR}/output/java)
 endif()
 
 
