@@ -74,6 +74,7 @@ cmake -DFLUID_INFERENCE_INSTALL_DIR=$PADDLE_ROOT \
 ```
 
 #### 2. 运行测试
+> 此处介绍主要面向Mac和Linux用户，Windows系统下的编译依赖于[Visual Studio](https://visualstudio.microsoft.com/zh-hans/)【大于或等于2015版本】，可参考[Windows编译文档](../compile4windows.md)进行编译运行
 
 我们写了一个单线程调用示例lac_demo.cpp和多线程调用示例lac_multi.cpp，下面展示了编译和运行示例的方法
 
