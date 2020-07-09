@@ -1,13 +1,14 @@
 cmake_minimum_required(VERSION 3.0)
 project(lac CXX C)
 
-option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."  OFF)
+option(WITH_STATIC_LIB "Compile demo with static/shared library, default use static."  ON)
 
 option(WITH_DEMO "Compile C++ demo or not, default yes" ON)
-option(WITH_JNILIB "Compile jni library for Java or not, default no" ON)
+option(WITH_JNILIB "Compile jni library for Java or not, default not" OFF)
 
-#set(PADDLE_ROOT "/Users/huangdingbang/Documents/code/cmake_test/paddle_inference")
-#set(JAVA_HOME "/Library/Java/JavaVirtualMachines/jdk1.8.0_192.jdk/Contents/Home/")
+# set paddle and java path
+#set(PADDLE_ROOT "D:/lac/fluid_inference_install_dir")
+#set(JAVA_HOME "C:/Program Files/Java/jdk1.8.0_121")
 
 message(STATUS "CXX compiler: ${CMAKE_CXX_COMPILER}, version: "
         "${CMAKE_CXX_COMPILER_ID} ${CMAKE_CXX_COMPILER_VERSION}")
@@ -115,7 +116,6 @@ else ()
 endif()
 
 # add openblas library if it exists
-
 set (openblas_inc_path ${PADDLE_ABS_PATH}/third_party/install/openblas/include)
 set (openblas_lib_path ${PADDLE_ABS_PATH}/third_party/install/openblas/lib)
 if (EXISTS ${openblas_inc_path} AND EXISTS ${openblas_lib_path})
@@ -158,7 +158,6 @@ include_directories(c++/include)
 aux_source_directory(c++/src SOURCE)
 
 
-
 message(STATUS "'${PROJECT_SOURCE_DIR}' output dir")
 add_library(lac ${SOURCE})
 
@@ -187,7 +186,7 @@ if(WIN32)
     add_custom_command(TARGET lac_demo POST_BUILD
           COMMAND ${CMAKE_COMMAND} -E copy ${mklml_lib_path}/mklml.dll ${CMAKE_BINARY_DIR}/Release
           COMMAND ${CMAKE_COMMAND} -E copy ${mklml_lib_path}/libiomp5md.dll ${CMAKE_BINARY_DIR}/Release
-          COMMAND ${CMAKE_COMMAND} -E copy ${mklml_lib_path}/mkldnn.dll  ${CMAKE_BINARY_DIR}/Release
+          COMMAND ${CMAKE_COMMAND} -E copy ${mkldnn_lib_path}/mkldnn.dll  ${CMAKE_BINARY_DIR}/Release
     )
   else()
     add_custom_command(TARGET lac_demo POST_BUILD
