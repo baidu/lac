@@ -12,77 +12,39 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License. */
 
-
 #include <vector>
 #include <string>
-#include <sys/time.h>
-#include<time.h>
+#include <thread>
+#include <mutex>
 #include <iostream>
+
 #include "lac.h"
 
 using namespace std;
 
-LAC* g_lac_handle = NULL;   // 多线程共用模型
-int g_line_count = 0;
-long g_usec_used = 0;
-pthread_mutex_t g_mutex;
-
-/* 计时器用于测试性能 */
-class TimeUsing {
-public:
-    explicit TimeUsing() {
-        start();
-    }
-    virtual ~TimeUsing() {
-    }
-    void start() {
-        gettimeofday(&_start, NULL);
-    }
-    long using_time() {
-        gettimeofday(&_end, NULL);
-        long using_time = (long) (_end.tv_sec - _start.tv_sec) * (long) 1000000
-                + (long) (_end.tv_usec - _start.tv_usec);
-        return using_time;
-    }
-private:
-    struct timeval _start;
-    struct timeval _end;
-};
+mutex g_cin_mutex;
+mutex g_cout_mutex;
 
 
 /* 线程函数 */
-void* thread_worker(void *arg) {
-    
-    if (g_lac_handle == NULL) {
-        cerr << "creat g_lac_handle error" << endl;
-        pthread_exit(NULL);
-    }
-
-    LAC lac(*g_lac_handle);
+void thread_worker(LAC& g_model) {
+    // Clone model
+    LAC lac(g_model);
 
     string query;    
-    timeval start;
-    timeval end;
-    double time_cost = 0;
-    int query_num  = 0;
     while (true) {
         // 数据读取
-        pthread_mutex_lock(&g_mutex);
+        g_cin_mutex.lock();
         if (!getline(cin, query)) {
-            pthread_mutex_unlock(&g_mutex);
+            g_cin_mutex.unlock();
             break;
         }
-        g_line_count ++;
-        pthread_mutex_unlock(&g_mutex);
+        g_cin_mutex.unlock();
 
-        gettimeofday(&start, NULL);
         auto result = lac.run(query);
-        gettimeofday(&end, NULL);
-        time_cost += 1000*(end.tv_sec - start.tv_sec) + (end.tv_usec - start.tv_usec)/1000;
-        query_num += 1;
         
         // 打印输出结果
-        pthread_mutex_lock(&g_mutex);
+        g_cout_mutex.lock();
         for (size_t i = 0; i < result.size(); i++){
             if(result[i].tag.length() == 0){
                 cout << result[i].word <<" ";
@@ -92,12 +54,8 @@ void* thread_worker(void *arg) {
             }
         }
         cout << endl;
-        pthread_mutex_unlock(&g_mutex);
+        g_cout_mutex.unlock();
     }
-    cerr << "query_num: " << query_num << endl;
-    cerr << "ave time per query: " << time_cost / query_num << endl;
-    cerr << "qps: " << query_num * 1000 / time_cost << endl; 
-    pthread_exit(NULL);
 }
 
 int main(int argc, char* argv[]) {
@@ -112,24 +70,20 @@ int main(int argc, char* argv[]) {
     string model_path = argv[1];
     int thread_num = atoi(argv[2]);
 
-    // 装载模型
-    g_lac_handle = new LAC(model_path);
+    // 装载模型, 多线程共用
+    LAC g_model(model_path);
     // 启动多线程
-    pthread_t ids[thread_num];
-    pthread_mutex_init(&g_mutex, NULL);
-    TimeUsing t;
+    std::vector<std::thread> threads;
     for (int i = 0; i < thread_num; i++) {
-        pthread_create(&ids[i], NULL, thread_worker, NULL);
+        thread th(thread_worker, ref(g_model));
+        threads.push_back(move(th));
     }
-    for (int i = 0; i < thread_num; i++) {
-        pthread_join(ids[i], NULL);
-    }
-    g_usec_used += t.using_time();
 
-    double time_using = (double) g_usec_used / 1000000.0;
-    cerr << "page num: " << g_line_count << endl;
-    cerr << "using time: " << time_using << endl;
-    cerr << "page/s : " << g_line_count / time_using << endl;
-    delete g_lac_handle;
+    for (thread& th : threads) {
+        if (th.joinable()) {
+            th.join();
+        }
+    }
+
     return 0;
 }

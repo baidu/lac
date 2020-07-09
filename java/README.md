@@ -73,6 +73,8 @@ cmake -DFLUID_INFERENCE_INSTALL_DIR=$PADDLE_ROOT \
 
 #### 2. jni编译，生成Java调用包
 
+> 此处介绍主要面向Mac和Linux用户，Windows系统下的编译依赖于[Visual Studio](https://visualstudio.microsoft.com/zh-hans/)【大于或等于2015版本】，可参考[Windows编译文档](../compile4windows.md)进行编译，我们也在[release](https://github.com/baidu/lac/releases/)中提供了一个基于mkldnn编译好的库`lac4javawin.zip`，以便大家使用。
+
 我们编写了jni调用c++库的接口，需要先编译生成Java可直接调用的包，通过[cmake](https://cmake.org/download/)去完成该过程。安装[cmake](https://cmake.org/download/)后，修改下列脚本中`PADDLE_ROOT`变量和`JAVA_HMOE`变量后，直接运行即可完成该过程：
 
 - `PADDLE_ROOT`为[1.依赖库准备](#依赖库准备)中得到的依赖库文件夹的路径
@@ -104,7 +106,7 @@ make install # 编译产出在 ../output/java 下
 
 #### 3. 运行测试
 
-执行完上述编译后，我们可以在`output/java`目录下查看到`com.baidu.nlp`的Java库以及调用示例LacDemo.java，我们可以直接运行LacDemo.java进行调用测试
+执行完上述编译后，我们可以在`output/java`目录下查看到`com.baidu.nlp`的Java库以及单线程调用示例LacDemo.java及多线程调用示例LacMulti.java，我们可以直接运行这两个示例进行调用测试
 
 - 下载模型文件：
 
@@ -116,9 +118,13 @@ make install # 编译产出在 ../output/java 下
 - 运行Java的demo：
 
 ```sh
-# 运行测试
+# 运行单线程测试
 javac LacDemo.java
 java LacDemo <model_dir>
+
+# 运行多线程测试
+javac LacMulti.java
+java LacMulti <model_dir> <thread_num>
 # model_dir: 模型文件路径，即上述下载解压后的路径，如 "./models_general/lac_model"
 ```
 

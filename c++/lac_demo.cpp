@@ -13,8 +13,6 @@ See the License for the specific language governing permissions and
 limitations under the License. */
 
 #include <string>
-#include <ctime>
-#include <sys/time.h>
 #include <iostream>
 #include "lac.h"
 
@@ -38,21 +36,11 @@ int main(int argc, char* argv[]){
     }
 
     string query;
-
-    // 计时器用于测试性能
-    struct timeval start;
-    struct timeval end;
-    int cnt = 0;
-    int char_cnt = 0;
-    gettimeofday(&start, NULL);
-    
     while (true)
     {
         if(!getline(cin, query)){
             break;
         }
-        cnt ++;
-        char_cnt += query.length();
 
         // 执行与打印输出结果
         auto result = lac.run(query);
@@ -65,8 +53,4 @@ int main(int argc, char* argv[]){
         }
         cout << endl;
     }
-    gettimeofday(&end, NULL);
-    double time = end.tv_sec - start.tv_sec + (end.tv_usec - start.tv_usec)/1000000.0;
-    cerr << "using time: " << time << " \t qps:" << cnt/time << "\tc/s:" << char_cnt/time << endl;
-
 }

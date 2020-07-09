@@ -40,13 +40,38 @@ extern "C"
   /*
  * Class:     LAC
  * Method:    init
- * Signature: (Ljava/lang/String;Ljava/lang/String;)V
+ * Signature: (Ljava/lang/String;)V
  */
   JNIEXPORT void JNICALL Java_com_baidu_nlp_LAC_init(JNIEnv *env, jobject thisObj, jstring model_dir)
   {
 
     LAC *self = new LAC(env->GetStringUTFChars(model_dir, 0));
     _set_self(env, thisObj, self);
+  }
+
+  /*
+ * Class:     LAC
+ * Method:    copy
+ * Signature: (Jlong)V
+ */
+  JNIEXPORT void JNICALL Java_com_baidu_nlp_LAC_copy(JNIEnv *env, jobject thisObj, jlong selfPtr)
+  {
+    LAC *self  = *(LAC **)&selfPtr;
+    if (self){
+      _set_self(env, thisObj, new LAC(*self));
+    }
+  }
+
+  /*
+ * Class:     LAC
+ * Method:    release
+ * Signature: (Jlong)V
+ */
+  JNIEXPORT void JNICALL Java_com_baidu_nlp_LAC_release(JNIEnv *env, jobject thisObj, jlong selfPtr)
+  {
+    if (selfPtr){
+      delete (LAC *)selfPtr;
+    }
   }
 
   /*
