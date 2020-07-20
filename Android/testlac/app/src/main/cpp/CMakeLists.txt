@@ -44,11 +44,18 @@ add_library(
         IMPORTED
 )
 
-set_target_properties(
-        paddle_lite_jni
-        PROPERTIES IMPORTED_LOCATION
-        ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libpaddle_lite_jni.so)
+if(${ANDROID_ABI} STREQUAL "armeabi-v7a")
+    set_target_properties(
+            paddle_lite_jni
+            PROPERTIES IMPORTED_LOCATION
+            ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libpaddle_light_api_shared.so)
+else()
+    set_target_properties(
+            paddle_lite_jni
+            PROPERTIES IMPORTED_LOCATION
+            ${CMAKE_CURRENT_SOURCE_DIR}/../jniLibs/${ANDROID_ABI}/libpaddle_lite_jni.so)
 
+endif()
 
 target_link_libraries( # Specifies the target library.
         native_lib
