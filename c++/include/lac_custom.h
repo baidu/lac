@@ -41,11 +41,6 @@ class Customization{
         // AC自动机用于item的查询
         AhoCorasick _ac_dict;
 
-        // AC自动机查询返回结果
-        std::vector<std::pair<int, int>> _ac_res;
-
-        // 中文字符处理临时变量
-        std::vector<std::string> line_vector;
     public:
     Customization(const std::string &customization_dic_path){
         load_dict(customization_dic_path);

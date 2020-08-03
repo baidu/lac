@@ -26,6 +26,10 @@ RVAL Customization::load_dict(const std::string &customization_dic_path){
     }
 
     std::string line;
+    
+    // 中文字符处理临时变量
+    std::vector<std::string> line_vector;
+    
     while (getline(fin, line))
     {
         if (line.length() < 1){
@@ -57,7 +61,7 @@ RVAL Customization::load_dict(const std::string &customization_dic_path){
             
             phrase.insert(phrase.end(), chars.begin(), chars.end());
             length += chars.size();
-            std::string tag = (word.length() < kv.size()) ? kv.substr(kv.rfind("/")) : "";
+            std::string tag = (word.length() < kv.size()) ? kv.substr(kv.rfind("/") + 1) : "";
             tags.push_back(tag);
             split.push_back(length);
         }
@@ -76,10 +80,12 @@ RVAL Customization::load_dict(const std::string &customization_dic_path){
 
 /* 对lac的预测结果进行干预 */
 RVAL Customization::parse_customization(const std::vector<std::string> &seq_chars, std::vector<std::string> &tag_ids){
-    _ac_dict.search(seq_chars, _ac_res);
+    // AC自动机查询返回结果
+    std::vector<std::pair<int, int>> ac_res;
+    _ac_dict.search(seq_chars, ac_res);
     
     int pre_begin = -1, pre_end = -1;
-    for (auto ac_pair : _ac_res){
+    for (auto ac_pair : ac_res){
         int value = ac_pair.second;
         int length = _customization_dic[value].split.back();
         int begin = ac_pair.first - length + 1;
