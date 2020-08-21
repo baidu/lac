@@ -24,10 +24,10 @@ from io import open
 import logging
 
 try:
-    from .ahocorasick import Ahocorasick
+    from .triedtree import TriedTree
     from ._compat import strdecode
 except:
-    from ahocorasick import Ahocorasick
+    from triedtree import TriedTree
     from _compat import strdecode
 
 
@@ -43,7 +43,7 @@ class Customization(object):
 
     def load_customization(self, filename, sep=None):
         """装载人工干预词典"""
-        self.ac = Ahocorasick()
+        self.ac = TriedTree()
         with open(filename, 'r', encoding='utf8') as f:
             for line in f:
                 if sep == None:
@@ -76,26 +76,15 @@ class Customization(object):
 
     def parse_customization(self, query, lac_tags):
         """使用人工干预词典修正lac模型的输出"""
-        def ac_postpress(ac_res):
-            ac_res.sort()
-            i = 1
-            while i < len(ac_res):
-                if ac_res[i - 1][0] < ac_res[i][0] and ac_res[i][0] <= ac_res[i - 1][1]:
-                    ac_res.pop(i)
-                    continue
-                i += 1
-            return ac_res
-
         if not self.ac:
             logging.warning("customization dict is not load")
             return
 
+        # FMM前向最大匹配
         ac_res = self.ac.search(query)
 
-        ac_res = ac_postpress(ac_res)
-
         for begin, end in ac_res:
-            phrase = query[begin:end + 1]
+            phrase = query[begin:end]
             index = begin
 
             tags, offsets = self.dictitem[phrase]
