@@ -12,6 +12,7 @@ LAC全称Lexical Analysis of Chinese，是百度自然语言处理部研发的�
 - [JAVA](./java/README.md)
 - [Android](./Android/README.md)
 
+
 ### 安装说明
 代码兼容Python2/3
 - 全自动安装: `pip install lac`
