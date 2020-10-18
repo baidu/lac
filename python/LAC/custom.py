@@ -40,6 +40,37 @@ class Customization(object):
         self.dictitem = {}
         self.ac = None
         pass
+    
+    def load_newwords(self, words, sep=None):
+        """装载人工干预词典（单词输入）"""
+        self.ac = TriedTree()
+        if sep == None:
+            words = words.strip().split()
+        else:
+            sep = strdecode(sep)
+            words = words.strip().split(sep)
+
+        if len(words) == 0:
+            return
+
+        phrase = ""
+        tags = []
+        offset = []
+        for word in words:
+            if word.rfind('/') < 1:
+                phrase += word
+                tags.append('')
+            else:
+                phrase += word[:word.rfind('/')]
+                tags.append(word[word.rfind('/') + 1:])
+            offset.append(len(phrase))
+
+        if len(phrase) < 2 and tags[0] == '':
+            return
+
+        self.dictitem[phrase] = (tags, offset)
+        self.ac.add_word(phrase)
+        self.ac.make()
 
     def load_customization(self, filename, sep=None):
         """装载人工干预词典"""
