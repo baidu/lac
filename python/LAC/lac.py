@@ -213,9 +213,9 @@ class LAC(object):
             texts: 用户定义词典，如："春天"、"花 开"、"春天/SEASON"、"花/n 开/v"、
             sep: 表示词典中，短语片段的分隔符，默认为空格' '或制表符'\t'
         """
-
-        self.custom = Customization()
-        self.custom.load_newwords(word, sep)
+        if self.custom is None:
+            self.custom = Customization()
+        self.custom.add_newwords(word, sep)
 
     def texts2tensor(self, texts):
         """将文本输入转为Paddle输入的Tensor

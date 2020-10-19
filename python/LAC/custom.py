@@ -41,9 +41,10 @@ class Customization(object):
         self.ac = None
         pass
     
-    def load_newwords(self, words, sep=None):
+    def add_newwords(self, words, sep=None):
         """装载人工干预词典（单词输入）"""
-        self.ac = TriedTree()
+        if self.ac is None:
+            self.ac = TriedTree()
         if sep == None:
             words = words.strip().split()
         else:
@@ -70,7 +71,6 @@ class Customization(object):
 
         self.dictitem[phrase] = (tags, offset)
         self.ac.add_word(phrase)
-        self.ac.make()
 
     def load_customization(self, filename, sep=None):
         """装载人工干预词典"""
