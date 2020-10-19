@@ -45,6 +45,7 @@ class Customization(object):
         """装载人工干预词典（单词输入）"""
         if self.ac is None:
             self.ac = TriedTree()
+        words = strdecode(words)
         if sep == None:
             words = words.strip().split()
         else:
