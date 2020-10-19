@@ -206,6 +206,16 @@ class LAC(object):
         """
         self.custom = Customization()
         self.custom.load_customization(customization_file, sep)
+    
+    def add_word(self, word, sep=None):
+        """添加单词，格式与用户词典一致
+        Args:
+            texts: 用户定义词典，如："春天"、"花 开"、"春天/SEASON"、"花/n 开/v"、
+            sep: 表示词典中，短语片段的分隔符，默认为空格' '或制表符'\t'
+        """
+        if self.custom is None:
+            self.custom = Customization()
+        self.custom.add_word(word, sep)
 
     def texts2tensor(self, texts):
         """将文本输入转为Paddle输入的Tensor
