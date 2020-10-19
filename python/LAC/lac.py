@@ -215,7 +215,7 @@ class LAC(object):
         """
         if self.custom is None:
             self.custom = Customization()
-        self.custom.add_newwords(word, sep)
+        self.custom.add_word(word, sep)
 
     def texts2tensor(self, texts):
         """将文本输入转为Paddle输入的Tensor

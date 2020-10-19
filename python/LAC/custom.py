@@ -41,7 +41,7 @@ class Customization(object):
         self.ac = None
         pass
     
-    def add_newwords(self, words, sep=None):
+    def add_word(self, words, sep=None):
         """装载人工干预词典（单词输入）"""
         if self.ac is None:
             self.ac = TriedTree()
