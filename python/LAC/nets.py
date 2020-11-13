@@ -326,7 +326,10 @@ def do_train(args):
     exe.run(startup_program)
 
     if args.init_checkpoint:
+        # fluid.io.load_persistables(executor=exe, dirname='/home/work/zhouchengjie/lac/my_lac_model',
+                        #    main_program=train_program)  # 加载完全体模型
         utils.init_pretraining_params(exe, args.init_checkpoint, train_program)
+
     if args.test_data:
         test_process(exe, test_program, test_reader, train_ret)
     if dev_count > 1:
@@ -352,6 +355,11 @@ def do_train(args):
                 feed=data[0],
             )
             step += 1
+            if step % 2000 == 0:
+                test_process(exe, test_program, test_reader, train_ret)
+            if step % 4000 == 0:
+                fluid.io.save_persistables(exe, args.init_checkpoint, train_program)
+
     if args.test_data:
         test_process(exe, test_program, test_reader, train_ret)
     return test_program, train_ret['crf_decode']

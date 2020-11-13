@@ -43,6 +43,8 @@ def _get_abs_path(path): return os.path.normpath(
 
 DEFAULT_LAC = _get_abs_path('lac_model')
 DEFAULT_SEG = _get_abs_path('seg_model')
+# DEFAULT_KEY = _get_abs_path('key_model')
+DEFAULT_KEY = '/home/work/zhouchengjie/tmp/lac/key_model'
 
 
 class LAC(object):
@@ -52,21 +54,29 @@ class LAC(object):
         super(LAC, self).__init__()
         utils.check_cuda(use_cuda)
         if model_path is None:
-            model_path = DEFAULT_SEG if mode == 'seg' else DEFAULT_LAC
+            if mode == 'seg':
+                model_path = DEFAULT_SEG
+            else:
+                model_path = DEFAULT_LAC
+        self.mode = mode
 
         self.args = utils.DefaultArgs(model_path)
         self.args.use_cuda = use_cuda
         self.model_path = model_path
+        ################
         config = AnalysisConfig(self.args.init_checkpoint)
         config.disable_glog_info()
+        ################
 
         if use_cuda:
             self.place = fluid.CUDAPlace(
                 int(os.getenv('FLAGS_selected_gpus', '0')))
+            ################
             config.enable_use_gpu(memory_pool_init_size_mb=500,
                                   device_id=int(
                                       os.getenv('FLAGS_selected_gpus', '0')),
                                   )
+            ################
         else:
             self.place = fluid.CPUPlace()
 
@@ -80,6 +90,25 @@ class LAC(object):
         self.custom = None
         self.batch = False
         self.return_tag = self.args.tag_type != 'seg'
+    
+    def reload(self):
+        """重初始化部分类定义参数"""
+        if self.mode == 'key':
+            model_path = DEFAULT_KEY
+
+        self.args = utils.DefaultArgs(model_path)
+        self.model_path = model_path
+        ################
+        config = AnalysisConfig(self.args.init_checkpoint)
+        config.disable_glog_info()
+        ################
+
+        # init executor
+        self.exe = fluid.Executor(self.place)
+
+        self.predictor = create_paddle_predictor(config)
+
+        # return True
 
     def run(self, texts):
         """执行模型预测过程
@@ -92,6 +121,7 @@ class LAC(object):
             返回LAC处理结果
             如果mode=='seg', 则只返回分词结果
             如果mode=='lac', 则同时返回分词与标签
+            如果mode=='key', 则同时返回分词与关键程度结果
         """
         if isinstance(texts, list) or isinstance(texts, tuple):
             self.batch = True
@@ -101,19 +131,48 @@ class LAC(object):
             texts = [texts]
             self.batch = False
 
-        tensor_words = self.texts2tensor(texts)
+        tensor_words, mix_data = self.texts2tensor(texts)
         crf_decode = self.predictor.run([tensor_words])
 
-        result = self.parse_result(texts, crf_decode[0], self.dataset)
+        result = self.parse_result(texts, crf_decode[0], self.dataset, mix_data)
 
-        if self.return_tag:
+        if self.return_tag and self.mode == 'lac':
             return result if self.batch else result[0]
-        else:
+        elif self.mode == 'seg':
             if not self.batch:
                 return result[0][0]
             return [word for word, _ in result]
+        else:
+            self.reload()
+            tensor_words, tensor_tags, segs = self.texts2tensor(result, key=True)
+            key_decode = self.predictor.run([tensor_words, tensor_tags])
+            tags = self.parse_key(texts, key_decode[0])
 
-    def parse_result(self, lines, crf_decode, dataset):
+            key_result = []
+            for data, tag, seg in zip(result, tags, segs):
+                if len(seg) != 0:
+                    for start, end in seg:
+                        tag = tag[:start] + [max(tag[start:end])] + tag[end:]
+                key_result.append([data[0], tag])
+            return key_result if self.batch else key_result[0]
+    
+    def parse_key(self, lines, result):
+        """将key模型输出的Tensor转为明文"""
+        offset_list = result.lod[0]
+        all_tags = result.data.int64_data()
+        
+        batch_size = len(offset_list) - 1
+
+        batch_out = []
+        for sent_index in range(batch_size):
+            begin, end = offset_list[sent_index], offset_list[sent_index + 1]
+            sent = lines[sent_index]
+            tags = all_tags[begin:end]
+
+            batch_out.append(tags)
+        return batch_out
+
+    def parse_result(self, lines, crf_decode, dataset, mix_data=None):
         """将模型输出的Tensor转为明文"""
         offset_list = crf_decode.lod[0]
         crf_decode = crf_decode.data.int64_data()
@@ -122,9 +181,25 @@ class LAC(object):
         batch_out = []
         for sent_index in range(batch_size):
             begin, end = offset_list[sent_index], offset_list[sent_index + 1]
+
             sent = lines[sent_index]
             tags = [dataset.id2label_dict[str(id)]
                     for id in crf_decode[begin:end]]
+            
+            if len(mix_data) != 0:
+                sent_mix = mix_data[sent_index]
+                tags_mix = []
+                for word, tag in zip(sent_mix, tags):
+                    if len(word) == 1:
+                        tags_mix.append(tag)
+                    else:
+                        for _ in range(len(word)):  # 按照char长度补全字词混合模型的tag
+                            if _ == 0 :
+                                tags_mix.append(tag)
+                            else:
+                                tags_mix.append(tag[:-2] + '-I')
+                tags = tags_mix
+
             if self.custom:
                 self.custom.parse_customization(sent, tags)
 
@@ -217,28 +292,61 @@ class LAC(object):
             self.custom = Customization()
         self.custom.add_word(word, sep)
 
-    def texts2tensor(self, texts):
+    def texts2tensor(self, texts, key=False):
         """将文本输入转为Paddle输入的Tensor
 
         Args:
             texts: 由string组成的list，模型输入的文本
+            lac和seg版本，texts = [line]，只要送文本就可以了
+            key版本，texts=[[line], [tag]]，都要送进去
+        
+        LAC: 
+            mix_data: 表示字词混合拆分的文本，后续会将词以及对应的label以char形式拆分，经过词典干预后再合并
+
+        KEY: 
+            tag_tensor: LAC词性标签转成tensor
+            seg: 表示经过LAC后，重新word embedding时记录把词语拆分成char的绝对位置，用于后续合并
 
         Returns:
             Paddle模型输入用的Tensor
         """
         lod = [0]
         data = []
+        mix_data = []
+        tag = []
+        seg = []
         for i, text in enumerate(texts):
-            text_inds = self.dataset.word_to_ids(text)
-            data += text_inds
-            lod.append(len(text_inds) + lod[i])
+            if self.mode == 'seg':
+                text_inds = self.dataset.word_to_ids(text)
+                data += text_inds
+                lod.append(len(text_inds) + lod[i])
+
+            elif self.mode == 'lac' or key is not True:  
+                text_inds, mix_words = self.dataset.mix_word_to_ids(text)
+                data += text_inds
+                lod.append(len(text_inds) + lod[i])
+                mix_data.append(mix_words)
+
+            else:  # key
+                text_inds, tag_inds, seg_list = self.dataset.mix_word_to_ids(text, key=True)
+                data += text_inds
+                lod.append(len(text_inds) + lod[i])
+                tag += tag_inds
+                seg.append(seg_list)
+
         data_np = np.array(data, dtype="int64")
         tensor = fluid.core.PaddleTensor(data_np)
         tensor.lod = [lod]
         tensor.shape = [lod[-1], 1]
+        if key is not True:
+            return tensor, mix_data
 
-        return tensor
+        tag_np = np.array(tag, dtype='int64')
+        tag_tensor = fluid.core.PaddleTensor(tag_np)
+        tag_tensor.lod = [lod]
+        tag_tensor.shape = [lod[-1], 1]
 
+        return tensor, tag_tensor, seg
 
 if __name__ == "__main__":
     lac = LAC('lac_model')

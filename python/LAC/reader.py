@@ -23,6 +23,7 @@ import argparse
 import logging
 import __future__
 import io
+import jieba_fast as jieba
 
 
 def load_kv_dict(dict_path,
@@ -49,6 +50,24 @@ def load_kv_dict(dict_path,
             result_dict[key] = value
     return result_dict
 
+def load_st_dict(dict_path, delimiter="\t"):
+    """
+    load part of sample speech tagging in file
+    """
+    result_dict = {}
+    index = 0
+    with io.open(dict_path, "r", encoding='utf8') as file:
+        for line in file:
+            terms = line.strip("\n").split(delimiter)
+            if len(terms) != 2:
+                continue
+            key, value = terms
+            value = value.split('-')[0]
+            if value not in result_dict.keys():
+                result_dict[value] = index
+                index += 1
+    return result_dict
+
 
 class Dataset(object):
     """data reader"""
@@ -61,8 +80,10 @@ class Dataset(object):
         self.label2id_dict = load_kv_dict(
             args.label_dict_path, reverse=True, value_func=int)
         self.id2label_dict = load_kv_dict(args.label_dict_path)
+        self.sl2label_dict = load_st_dict(args.label_dict_path)
         self.word_replace_dict = load_kv_dict(args.word_rep_dict_path)
         self.oov_id = self.word2id_dict['OOV']
+        self.oov_tag = self.sl2label_dict['O']
         self.tag_type = args.tag_type
 
         self.args = args
@@ -111,6 +132,49 @@ class Dataset(object):
             words.append(word)
 
         return "".join(words), tags
+    
+    def mix_word_to_ids(self, text, key=False):
+        """convert mix (word and char) to word index"""
+        word_ids = []
+        mix_text = []
+
+        if key:
+            text, tag = text
+            tag_ids = []
+            seg_list = []  # 被拆分词语的绝对位置
+            start = 0  # 单词起始位置
+        else:
+            text = jieba.lcut(text, HMM=False)
+
+        for i, word in enumerate(text):
+            if len(word) == 1 or word in self.word2id_dict.keys():
+                mix_text.append(word)
+                word = self.word_replace_dict.get(word, word)
+                word_id = self.word2id_dict.get(word, self.oov_id)
+                word_ids.append(word_id)
+                if key:
+                    tag_id = self.sl2label_dict.get(tag[i], self.oov_tag)
+                    # tag_id = self.sl2label_dict[tag[i]]
+                    tag_ids.append(tag_id)
+                    start += 1
+            else:
+                for w in word:
+                    mix_text.append(w)
+                    w = self.word_replace_dict.get(w, w)
+                    word_id = self.word2id_dict.get(w, self.oov_id)
+                    word_ids.append(word_id)
+                    if key:
+                        tag_id = self.sl2label_dict.get(tag[i], self.oov_tag)
+                        # tag_id = self.sl2label_dict[tag[i]]
+                        tag_ids.append(tag_id)
+                if key:
+                    end = start + len(word)
+                    seg_list.insert(0, [start, end])
+                    start = end
+        if key:
+            return word_ids, tag_ids, seg_list
+        else:
+            return word_ids, mix_text
 
     def word_to_ids(self, words):
         """convert word to word index"""
@@ -119,7 +183,6 @@ class Dataset(object):
             word = self.word_replace_dict.get(word, word)
             word_id = self.word2id_dict.get(word, self.oov_id)
             word_ids.append(word_id)
-
         return word_ids
 
     def label_to_ids(self, labels):
@@ -131,6 +194,44 @@ class Dataset(object):
             label_id = self.label2id_dict[label]
             label_ids.append(label_id)
         return label_ids
+
+    def word_label_toid(self, words, labels):
+        start = 0  # 当前单词起始位置
+        end = 0  #位置前单词结束为止
+        del_index = []  # 删除lab绝对位置
+
+        word_ids = []
+        label_ids = []
+
+        words = jieba.lcut(words, HMM=False)
+
+        for word in words:
+
+            end = start + len(word)
+            
+            if word in self.word_replace_dict.keys() or len(word) == 1:
+                word = self.word_replace_dict.get(word, word)
+                word_id = self.word2id_dict.get(word, self.oov_id)
+                word_ids.append(word_id)
+                if len(word) > 1:
+                    del_index += [x for x in range(start+1, end)]  # 定位当前单词除首位剩下的其他字符绝对位置
+            else:
+                for w in word:
+                    w = self.word_replace_dict.get(w, w)
+                    word_id = self.word2id_dict.get(w, self.oov_id)
+                    word_ids.append(word_id)
+            start = end
+
+        for label in labels:
+            if label not in self.label2id_dict:
+                label = "O"
+            label_id = self.label2id_dict[label]
+            label_ids.append(label_id)
+        
+        label_ids = [label_ids[i] for i in range(len(label_ids)) if (i not in del_index)]  # 删除lab
+
+        return word_ids, label_ids
+
 
     def file_reader(self, filename, mode="train"):
         """
@@ -147,20 +248,33 @@ class Dataset(object):
                     yield (word_ids,)
             else:
                 cnt = 0
-                for line in fread:
+                for a, line in enumerate(fread):
                     if (len(line.strip()) == 0):
                         continue
                     if self.tag_type == 'seg':
                         words, labels = self.parse_seg(line)
                     elif self.tag_type == 'tag':
-                        words, labels = self.parse_tag(line)
+                        """
+                        words, labels = self.parse_tag(line)  # 原始tag处理过程
+                        """
+                        line = line.strip('\n').split('\t')
+                        if len(line) != 2:
+                            continue
+                        words, labels = line  # 训练数据处理过程
+                        words = [word for i, word in enumerate(words) if i%2==0]
+                        labels = [x for x in labels.split('\002')]
+                        if len(words) != len(labels):
+                            continue
+                        words = ''.join(words)
                     else:
                         words, labels = line.strip("\n").split("\t")
                         words = words.split("\002")
                         labels = labels.split("\002")
 
-                    word_ids = self.word_to_ids(words)
-                    label_ids = self.label_to_ids(labels)
+                    # word_ids = self.word_to_ids(words)  # 原始char输入
+                    # label_ids = self.label_to_ids(labels)
+                    word_ids, label_ids = self.word_label_toid(words, labels)  # 修改字词混合并进行标签对齐操作
+
                     assert len(word_ids) == len(label_ids)
                     yield word_ids, label_ids
                     cnt += 1
