@@ -50,25 +50,6 @@ def load_kv_dict(dict_path,
             result_dict[key] = value
     return result_dict
 
-def load_st_dict(dict_path, delimiter="\t"):
-    """
-    load part of sample speech tagging in file
-    """
-    result_dict = {}
-    index = 0
-    with io.open(dict_path, "r", encoding='utf8') as file:
-        for line in file:
-            terms = line.strip("\n").split(delimiter)
-            if len(terms) != 2:
-                continue
-            key, value = terms
-            value = value.split('-')[0]
-            if value not in result_dict.keys():
-                result_dict[value] = index
-                index += 1
-    return result_dict
-
-
 class Dataset(object):
     """data reader"""
 
@@ -80,10 +61,9 @@ class Dataset(object):
         self.label2id_dict = load_kv_dict(
             args.label_dict_path, reverse=True, value_func=int)
         self.id2label_dict = load_kv_dict(args.label_dict_path)
-        self.sl2label_dict = load_st_dict(args.label_dict_path)
         self.word_replace_dict = load_kv_dict(args.word_rep_dict_path)
         self.oov_id = self.word2id_dict['OOV']
-        self.oov_tag = self.sl2label_dict['O']
+        self.oov_tag = self.label2id_dict['O']
         self.tag_type = args.tag_type
 
         self.args = args
@@ -134,13 +114,25 @@ class Dataset(object):
         return "".join(words), tags
     
     def mix_word_to_ids(self, text, key=False):
-        """convert mix (word and char) to word index"""
+        """convert mix (word and char) to word index
+        Args:
+            text: 输入文本，key模型下是经过lac得到的分词结果以及词性标签
+
+        Return:
+            LAC:
+                word_ids: 字词混合粒度的文本idx
+                mix_text: 字词混合粒度的切分文本
+            KEY:
+                word_ids: 字词混合粒度的文本idx
+                tag_ids: 字词混合粒度的词性标签idx
+                seg_list: 被拆分成char的词在句子中的绝对位置
+        """
         word_ids = []
         mix_text = []
 
         if key:
             text, tag = text
-            tag_ids = []
+            tag_ids = []  # 词性
             seg_list = []  # 被拆分词语的绝对位置
             start = 0  # 单词起始位置
         else:
@@ -153,8 +145,7 @@ class Dataset(object):
                 word_id = self.word2id_dict.get(word, self.oov_id)
                 word_ids.append(word_id)
                 if key:
-                    tag_id = self.sl2label_dict.get(tag[i], self.oov_tag)
-                    # tag_id = self.sl2label_dict[tag[i]]
+                    tag_id = self.label2id_dict.get(tag[i], self.oov_tag)
                     tag_ids.append(tag_id)
                     start += 1
             else:
@@ -164,8 +155,7 @@ class Dataset(object):
                     word_id = self.word2id_dict.get(w, self.oov_id)
                     word_ids.append(word_id)
                     if key:
-                        tag_id = self.sl2label_dict.get(tag[i], self.oov_tag)
-                        # tag_id = self.sl2label_dict[tag[i]]
+                        tag_id = self.label2id_dict.get(tag[i], self.oov_tag)
                         tag_ids.append(tag_id)
                 if key:
                     end = start + len(word)

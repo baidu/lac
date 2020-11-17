@@ -149,11 +149,12 @@ class LAC(object):
             tags = self.parse_key(texts, key_decode[0])
 
             key_result = []
-            for data, tag, seg in zip(result, tags, segs):
+            for data, tag, seg in zip(result, tags, segs):  #  标签与单词对齐
                 if len(seg) != 0:
                     for start, end in seg:
                         tag = tag[:start] + [max(tag[start:end])] + tag[end:]
                 key_result.append([data[0], tag])
+
             return key_result if self.batch else key_result[0]
     
     def parse_key(self, lines, result):
@@ -185,7 +186,14 @@ class LAC(object):
             sent = lines[sent_index]
             tags = [dataset.id2label_dict[str(id)]
                     for id in crf_decode[begin:end]]
-            
+
+            # """
+            # 正式版要给注掉,这里用来防止词结合，便于跟训练集对齐
+            # if self.mode == 'key':
+            batch_out.append([mix_data[sent_index], tags])  #  如果key模型，返回结果不用合并BI
+            continue  #
+            # """
+
             if len(mix_data) != 0:
                 sent_mix = mix_data[sent_index]
                 tags_mix = []
@@ -209,11 +217,15 @@ class LAC(object):
                 # for the first char
                 if len(sent_out) == 0 or tag.endswith("B") or tag.endswith("S"):
                     sent_out.append(sent[ind])
-                    tags_out.append(tag[:-2])
+                    if self.mode == 'key':
+                        tags_out.append(tag)
+                    else:
+                        tags_out.append(tag[:-2])
                     continue
                 sent_out[-1] += sent[ind]
-                # 取最后一个tag作为标签
-                tags_out[-1] = tag[:-2]
+                # lac取最后一个tag作为标签，key跳过
+                if self.mode != 'key':
+                    tags_out[-1] = tag[:-2]
 
             batch_out.append([sent_out, tags_out])
         return batch_out
@@ -291,6 +303,18 @@ class LAC(object):
         if self.custom is None:
             self.custom = Customization()
         self.custom.add_word(word, sep)
+    
+    def to_tensor(self, data, lod):
+        """
+        Args:
+            data: 文档或者词性标签的idx
+            lod: 句子长度及顺序信息
+        """
+        data_np = np.array(data, dtype="int64")
+        tensor = fluid.core.PaddleTensor(data_np)
+        tensor.lod = [lod]
+        tensor.shape = [lod[-1], 1]
+        return tensor
 
     def texts2tensor(self, texts, key=False):
         """将文本输入转为Paddle输入的Tensor
@@ -300,15 +324,15 @@ class LAC(object):
             lac和seg版本，texts = [line]，只要送文本就可以了
             key版本，texts=[[line], [tag]]，都要送进去
         
-        LAC: 
-            mix_data: 表示字词混合拆分的文本，后续会将词以及对应的label以char形式拆分，经过词典干预后再合并
-
-        KEY: 
-            tag_tensor: LAC词性标签转成tensor
-            seg: 表示经过LAC后，重新word embedding时记录把词语拆分成char的绝对位置，用于后续合并
-
         Returns:
             Paddle模型输入用的Tensor
+        
+            LAC: 
+                mix_data: 表示字词混合拆分的文本，后续会将词以及对应的label以char形式拆分，经过词典干预后再合并
+
+            KEY: 
+                tag_tensor: LAC词性标签转成tensor
+                seg: 表示经过LAC后，重新word embedding时记录把词语拆分成char的绝对位置，用于后续合并
         """
         lod = [0]
         data = []
@@ -318,34 +342,25 @@ class LAC(object):
         for i, text in enumerate(texts):
             if self.mode == 'seg':
                 text_inds = self.dataset.word_to_ids(text)
-                data += text_inds
-                lod.append(len(text_inds) + lod[i])
 
             elif self.mode == 'lac' or key is not True:  
                 text_inds, mix_words = self.dataset.mix_word_to_ids(text)
-                data += text_inds
-                lod.append(len(text_inds) + lod[i])
                 mix_data.append(mix_words)
 
             else:  # key
                 text_inds, tag_inds, seg_list = self.dataset.mix_word_to_ids(text, key=True)
-                data += text_inds
-                lod.append(len(text_inds) + lod[i])
                 tag += tag_inds
                 seg.append(seg_list)
+            
+            data += text_inds
+            lod.append(len(text_inds) + lod[i])
 
-        data_np = np.array(data, dtype="int64")
-        tensor = fluid.core.PaddleTensor(data_np)
-        tensor.lod = [lod]
-        tensor.shape = [lod[-1], 1]
+        tensor = self.to_tensor(data, lod)
+
         if key is not True:
             return tensor, mix_data
 
-        tag_np = np.array(tag, dtype='int64')
-        tag_tensor = fluid.core.PaddleTensor(tag_np)
-        tag_tensor.lod = [lod]
-        tag_tensor.shape = [lod[-1], 1]
-
+        tag_tensor = self.to_tensor(tag, lod)
         return tensor, tag_tensor, seg
 
 if __name__ == "__main__":
