@@ -63,7 +63,6 @@ class Dataset(object):
         self.id2label_dict = load_kv_dict(args.label_dict_path)
         self.word_replace_dict = load_kv_dict(args.word_rep_dict_path)
         self.oov_id = self.word2id_dict['OOV']
-        # self.oov_tag = self.label2id_dict['O']
         self.tag_type = args.tag_type
 
         self.args = args
