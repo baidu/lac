@@ -82,6 +82,30 @@ lac_result = lac.run(texts)
 | c    | 连词     | u    | 助词     | xc   | 其他虚词 | w    | 标点符号 |
 | PER  | 人名     | LOC  | 地名     | ORG  | 机构名   | TIME | 时间     |
 
+#### 句子关键词分类
+- 代码示例：
+```python
+from LAC import LAC
+
+# 装载分词模型
+lac = LAC(mode='key')
+
+# 单个样本输入，输入为Unicode编码的字符串
+text = u"LAC是个优秀的分词工具"
+key_result = lac.run(text)
+
+# 批量样本输入, 输入为多个句子组成的list，平均速率会更快
+texts = [u"LAC是个优秀的分词工具", u"百度是一家高科技公司"]
+key_result = lac.run(texts)
+```
+- 输出：
+
+```text
+【单样本】：seg_result = [LAC, 是, 个, 优秀, 的, 分词, 工具]
+【批量样本】：seg_result = [[LAC, 是, 个, 优秀, 的, 分词, 工具], [百度, 是, 一家, 高科技, 公司]]
+```
+
+
 #### 定制化功能
 
 在模型输出的基础上，LAC还支持用户配置定制化的切分结果和专名类型输出。当模型预测匹配到词典的中的item时，会用定制化的结果替代原有结果。为了实现更加精确的匹配，我们支持以由多个单词组成的长片段作为一个item。
