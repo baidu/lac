@@ -188,10 +188,10 @@ class LAC(object):
                     for id in crf_decode[begin:end]]
 
             # """
-            # 正式版要给注掉,这里用来防止词结合，便于跟训练集对齐
             # if self.mode == 'key':
-            batch_out.append([mix_data[sent_index], tags])  #  如果key模型，返回结果不用合并BI
-            continue  #
+            # 这里没有注释掉因为生成训练语料需要BIO标签
+            # batch_out.append([mix_data[sent_index], tags])  #  如果key模型，返回结果不用合并BI
+            # continue  #
             # """
 
             if len(mix_data) != 0:

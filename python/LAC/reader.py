@@ -63,7 +63,7 @@ class Dataset(object):
         self.id2label_dict = load_kv_dict(args.label_dict_path)
         self.word_replace_dict = load_kv_dict(args.word_rep_dict_path)
         self.oov_id = self.word2id_dict['OOV']
-        self.oov_tag = self.label2id_dict['O']
+        # self.oov_tag = self.label2id_dict['O']
         self.tag_type = args.tag_type
 
         self.args = args
@@ -145,17 +145,24 @@ class Dataset(object):
                 word_id = self.word2id_dict.get(word, self.oov_id)
                 word_ids.append(word_id)
                 if key:
-                    tag_id = self.label2id_dict.get(tag[i], self.oov_tag)
+                    if tag[i] not in self.label2id_dict:
+                        tag_id = "O"
+                    tag_id = self.label2id_dict[tag[i]]
                     tag_ids.append(tag_id)
                     start += 1
             else:
-                for w in word:
+                for a, w in enumerate(word):
                     mix_text.append(w)
                     w = self.word_replace_dict.get(w, w)
                     word_id = self.word2id_dict.get(w, self.oov_id)
                     word_ids.append(word_id)
                     if key:
-                        tag_id = self.label2id_dict.get(tag[i], self.oov_tag)
+                        if tag[i] not in self.label2id_dict:
+                            tag_id = "O"
+                        if a == 0:
+                            tag_id = self.label2id_dict[tag[i]]
+                        else:
+                            tag_id = self.label2id_dict[tag[i].split('-')[0] + '-I']
                         tag_ids.append(tag_id)
                 if key:
                     end = start + len(word)
