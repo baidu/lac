@@ -116,6 +116,7 @@ class Dataset(object):
         """convert mix (word and char) to word index
         Args:
             text: 输入文本，key模型下是经过lac得到的分词结果以及词性标签
+            key : 模型是否是关键词模型
 
         Return:
             LAC:
@@ -124,15 +125,13 @@ class Dataset(object):
             KEY:
                 word_ids: 字词混合粒度的文本idx
                 tag_ids: 字词混合粒度的词性标签idx
-                seg_list: 被拆分成char的词在句子中的绝对位置
+                seg_local: 被拆分成char的词在句子中的绝对位置
         """
-        word_ids = []
-        mix_text = []
+        word_ids, mix_text = [], []
 
         if key:
             text, tag = text
-            tag_ids = []  # 词性
-            seg_list = []  # 被拆分词语的绝对位置
+            tag_ids, seg_local = [], []
             start = 0  # 单词起始位置
         else:
             text = jieba.lcut(text, HMM=False)
@@ -143,9 +142,10 @@ class Dataset(object):
                 word = self.word_replace_dict.get(word, word)
                 word_id = self.word2id_dict.get(word, self.oov_id)
                 word_ids.append(word_id)
+                
                 if key:
                     if tag[i] not in self.label2id_dict:
-                        tag_id = "O"
+                        tag[i] = "O"
                     tag_id = self.label2id_dict[tag[i]]
                     tag_ids.append(tag_id)
                     start += 1
@@ -155,9 +155,10 @@ class Dataset(object):
                     w = self.word_replace_dict.get(w, w)
                     word_id = self.word2id_dict.get(w, self.oov_id)
                     word_ids.append(word_id)
+
                     if key:
                         if tag[i] not in self.label2id_dict:
-                            tag_id = "O"
+                            tag[i] = "O"
                         if a == 0:
                             tag_id = self.label2id_dict[tag[i]]
                         else:
@@ -165,10 +166,10 @@ class Dataset(object):
                         tag_ids.append(tag_id)
                 if key:
                     end = start + len(word)
-                    seg_list.insert(0, [start, end])
+                    seg_local.insert(0, [start, end])
                     start = end
         if key:
-            return word_ids, tag_ids, seg_list
+            return word_ids, tag_ids, seg_local
         else:
             return word_ids, mix_text
 
@@ -193,7 +194,7 @@ class Dataset(object):
 
     def word_label_toid(self, words, labels):
         start = 0  # 当前单词起始位置
-        end = 0  #位置前单词结束为止
+        end = 0  # 位置前单词结束位置
         del_index = []  # 删除lab绝对位置
 
         word_ids = []

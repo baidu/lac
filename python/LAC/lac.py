@@ -43,8 +43,7 @@ def _get_abs_path(path): return os.path.normpath(
 
 DEFAULT_LAC = _get_abs_path('lac_model')
 DEFAULT_SEG = _get_abs_path('seg_model')
-# DEFAULT_KEY = _get_abs_path('key_model')
-DEFAULT_KEY = '/home/work/zhouchengjie/tmp/lac/key_model'
+DEFAULT_KEY = _get_abs_path('key_model')
 
 
 class LAC(object):
@@ -91,10 +90,12 @@ class LAC(object):
         self.batch = False
         self.return_tag = self.args.tag_type != 'seg'
     
-    def reload(self):
+    def reload(self, second_mode):
         """重初始化部分类定义参数"""
-        if self.mode == 'key':
-            model_path = DEFAULT_KEY
+        if second_mode == 'key':
+            model_path = '/'.join(self.model_path.split('/')[:-1]) + '/key_model'
+        else:
+            model_path = '/'.join(self.model_path.split('/')[:-1]) + '/lac_model'
 
         self.args = utils.DefaultArgs(model_path)
         self.model_path = model_path
@@ -138,12 +139,15 @@ class LAC(object):
 
         if self.return_tag and self.mode == 'lac':
             return result if self.batch else result[0]
+
         elif self.mode == 'seg':
             if not self.batch:
                 return result[0][0]
             return [word for word, _ in result]
+
         else:
-            self.reload()
+            self.reload(second_mode='key')
+            
             tensor_words, tensor_tags, segs = self.texts2tensor(result, key=True)
             key_decode = self.predictor.run([tensor_words, tensor_tags])
             tags = self.parse_key(texts, key_decode[0])
@@ -155,18 +159,20 @@ class LAC(object):
                         tag = tag[:start] + [max(tag[start:end])] + tag[end:]
                 key_result.append([data[0], tag])
 
+            self.reload(second_mode='lac')
+
             return key_result if self.batch else key_result[0]
     
     def parse_key(self, lines, result):
         """将key模型输出的Tensor转为明文"""
         offset_list = result.lod[0]
         all_tags = result.data.int64_data()
-        
         batch_size = len(offset_list) - 1
 
         batch_out = []
         for sent_index in range(batch_size):
             begin, end = offset_list[sent_index], offset_list[sent_index + 1]
+
             sent = lines[sent_index]
             tags = all_tags[begin:end]
 
@@ -187,13 +193,6 @@ class LAC(object):
             tags = [dataset.id2label_dict[str(id)]
                     for id in crf_decode[begin:end]]
 
-            # """
-            # if self.mode == 'key':
-            # 这里没有注释掉因为生成训练语料需要BIO标签
-            # batch_out.append([mix_data[sent_index], tags])  #  如果key模型，返回结果不用合并BI
-            # continue  #
-            # """
-
             if len(mix_data) != 0:
                 sent_mix = mix_data[sent_index]
                 tags_mix = []
@@ -211,8 +210,7 @@ class LAC(object):
             if self.custom:
                 self.custom.parse_customization(sent, tags)
 
-            sent_out = []
-            tags_out = []
+            sent_out, tags_out = [], []
             for ind, tag in enumerate(tags):
                 # for the first char
                 if len(sent_out) == 0 or tag.endswith("B") or tag.endswith("S"):
@@ -335,10 +333,7 @@ class LAC(object):
                 seg: 表示经过LAC后，重新word embedding时记录把词语拆分成char的绝对位置，用于后续合并
         """
         lod = [0]
-        data = []
-        mix_data = []
-        tag = []
-        seg = []
+        data, mix_data, tag, seg = [], [], [], []
         for i, text in enumerate(texts):
             if self.mode == 'seg':
                 text_inds = self.dataset.word_to_ids(text)
@@ -348,9 +343,9 @@ class LAC(object):
                 mix_data.append(mix_words)
 
             else:  # key
-                text_inds, tag_inds, seg_list = self.dataset.mix_word_to_ids(text, key=True)
+                text_inds, tag_inds, seg_local = self.dataset.mix_word_to_ids(text, key=True)
                 tag += tag_inds
-                seg.append(seg_list)
+                seg.append(seg_local)
             
             data += text_inds
             lod.append(len(text_inds) + lod[i])
