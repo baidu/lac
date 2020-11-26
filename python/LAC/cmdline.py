@@ -46,7 +46,7 @@ def main(args=args):
     elif args.mode == 'key':
         lac = LAC(mode='key')
     elif args.mode == 'lac':
-        lac = LAC(mode='lac')
+        lac = LAC()
 
 
     while True:
