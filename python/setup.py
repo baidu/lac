@@ -51,7 +51,7 @@ except ImportError:
 
 setup(
     name="LAC",
-    version="2.0.5",
+    version="2.1.0",
     author="Baidu NLP",
     author_email="nlp-fenci@baidu.com",
     description="A chinese lexical analysis tool by Baidu NLP.",

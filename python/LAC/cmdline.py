@@ -26,8 +26,10 @@ from __future__ import unicode_literals
 
 import argparse
 parser = argparse.ArgumentParser(description='LAC Init Argments')
-parser.add_argument('--mode', action='store_true', default='lac', 
-                    help='Choose mode which user used, include "lac", "key", "seg"')
+parser.add_argument('--segonly', action='store_true', 
+                    help='run segment only if setting')
+parser.add_argument('--key', action='store_true', 
+                    help='run key model only if setting')
 args = parser.parse_args()
 
 __all__ = [
@@ -41,11 +43,11 @@ def main(args=args):
     from LAC._compat import strdecode
     import sys
 
-    if args.mode == 'seg':
+    if args.segonly:
         lac = LAC(mode='seg')
-    elif args.mode == 'key':
+    elif args.key:
         lac = LAC(mode='key')
-    elif args.mode == 'lac':
+    else:
         lac = LAC()
 
 
