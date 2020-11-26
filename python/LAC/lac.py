@@ -132,10 +132,10 @@ class LAC(object):
             texts = [texts]
             self.batch = False
 
-        tensor_words, mix_data = self.texts2tensor(texts)
+        tensor_words, del_index = self.texts2tensor(texts)
         crf_decode = self.predictor.run([tensor_words])
 
-        result = self.parse_result(texts, crf_decode[0], self.dataset, mix_data)
+        result = self.parse_result(texts, crf_decode[0], self.dataset, del_index)
 
         if self.return_tag and self.mode == 'lac':
             return result if self.batch else result[0]
@@ -148,15 +148,16 @@ class LAC(object):
         else:
             self.reload(second_mode='key')
             
-            tensor_words, tensor_tags, segs = self.texts2tensor(result, key=True)
+            tensor_words, tensor_tags, add_index = self.texts2tensor(result, key=True)
             key_decode = self.predictor.run([tensor_words, tensor_tags])
             tags = self.parse_key(texts, key_decode[0])
 
             key_result = []
-            for data, tag, seg in zip(result, tags, segs):  #  标签与单词对齐
+            for data, tag, seg in zip(result, tags, add_index):  #  标签与单词对齐
                 if len(seg) != 0:
-                    for start, end in seg:
-                        tag = tag[:start] + [max(tag[start:end])] + tag[end:]
+                    seg = seg[::-1]
+                    for local, length in seg:
+                        tag = tag[:local] + [max(tag[local:local+length])] + tag[local+length:]
                 key_result.append([data[0], tag])
 
             self.reload(second_mode='lac')
@@ -179,8 +180,8 @@ class LAC(object):
             batch_out.append(tags)
         return batch_out
 
-    def parse_result(self, lines, crf_decode, dataset, mix_data=None):
-        """将模型输出的Tensor转为明文"""
+    def parse_result(self, lines, crf_decode, dataset, del_index):
+        """将LAC模型输出的Tensor转为明文"""
         offset_list = crf_decode.lod[0]
         crf_decode = crf_decode.data.int64_data()
         batch_size = len(offset_list) - 1
@@ -193,19 +194,26 @@ class LAC(object):
             tags = [dataset.id2label_dict[str(id)]
                     for id in crf_decode[begin:end]]
 
-            if len(mix_data) != 0:
-                sent_mix = mix_data[sent_index]
-                tags_mix = []
-                for word, tag in zip(sent_mix, tags):
-                    if len(word) == 1:
-                        tags_mix.append(tag)
-                    else:
-                        for _ in range(len(word)):  # 按照char长度补全字词混合模型的tag
-                            if _ == 0 :
-                                tags_mix.append(tag)
-                            else:
-                                tags_mix.append(tag[:-2] + '-I')
-                tags = tags_mix
+            # if len(mix_data) != 0:
+            #     sent_mix = mix_data[sent_index]
+            #     tags_mix = []
+            #     for word, tag in zip(sent_mix, tags):
+            #         if len(word) == 1:
+            #             tags_mix.append(tag)
+            #         else:
+            #             for _ in range(len(word)):  # 按照char长度补全字词混合模型的tag
+            #                 if _ == 0 :
+            #                     tags_mix.append(tag)
+            #                 else:
+            #                     tags_mix.append(tag[:-2] + '-I')
+            #     tags = tags_mix
+
+            # 重新填充被省略的单词的char部分
+            if len(del_index) != 0:
+                sent_mix = del_index[sent_index]
+                for local in sent_mix:  
+                    tags.insert(local, tags[local-1].split('-')[0] + '-I')
+               
 
             if self.custom:
                 self.custom.parse_customization(sent, tags)
@@ -327,25 +335,26 @@ class LAC(object):
         
             LAC: 
                 mix_data: 表示字词混合拆分的文本，后续会将词以及对应的label以char形式拆分，经过词典干预后再合并
+                add_local: 
 
             KEY: 
                 tag_tensor: LAC词性标签转成tensor
-                seg: 表示经过LAC后，重新word embedding时记录把词语拆分成char的绝对位置，用于后续合并
+                local: 表示经过LAC后，重新word embedding时记录把词语拆分成char的绝对位置，用于后续合并
         """
         lod = [0]
-        data, mix_data, tag, seg = [], [], [], []
+        data, add_local, tag, del_local = [], [], [], []
         for i, text in enumerate(texts):
             if self.mode == 'seg':
-                text_inds = self.dataset.word_to_ids(text)
+                text_inds = self.dataset.word_to_ids(text, gradind='char')
 
             elif self.mode == 'lac' or key is not True:  
-                text_inds, mix_words = self.dataset.mix_word_to_ids(text)
-                mix_data.append(mix_words)
+                text_inds, del_index = self.dataset.mix_word_to_ids(text)
+                del_local.append(del_index)
 
             else:  # key
-                text_inds, tag_inds, seg_local = self.dataset.mix_word_to_ids(text, key=True)
+                text_inds, tag_inds, add_index = self.dataset.mix_word_to_ids(text, key=True)
                 tag += tag_inds
-                seg.append(seg_local)
+                add_local.append(add_index)
             
             data += text_inds
             lod.append(len(text_inds) + lod[i])
@@ -353,10 +362,10 @@ class LAC(object):
         tensor = self.to_tensor(data, lod)
 
         if key is not True:
-            return tensor, mix_data
+            return tensor, del_local
 
         tag_tensor = self.to_tensor(tag, lod)
-        return tensor, tag_tensor, seg
+        return tensor, tag_tensor, add_local
 
 if __name__ == "__main__":
     lac = LAC('lac_model')

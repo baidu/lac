@@ -194,7 +194,7 @@ def create_model(args, vocab_size, num_labels, mode='train'):
     return ret
 
 
-def create_pyreader(args, file_name, feed_list, place,
+def create_pyreader(args, file_name, feed_list, place, dev_count,
                     reader=None, iterable=True, for_test=False):
     """创建PyReader用于Paddle读取数据
 
@@ -224,7 +224,7 @@ def create_pyreader(args, file_name, feed_list, place,
         pyreader.decorate_sample_list_generator(
             paddle.batch(
                 reader.file_reader(file_name, mode='test'),
-                batch_size=args.batch_size
+                batch_size=args.batch_size / dev_count
             ),
             places=place
         )
@@ -235,7 +235,7 @@ def create_pyreader(args, file_name, feed_list, place,
                     reader.file_reader(file_name),
                     buf_size=args.traindata_shuffle_buffer
                 ),
-                batch_size=args.batch_size
+                batch_size=args.batch_size / dev_count
             ),
             places=place
         )
@@ -314,20 +314,20 @@ def do_train(args):
     train_reader = create_pyreader(args, file_name=args.train_data,
                                    feed_list=train_ret['feed_list'],
                                    place=place,
+                                   dev_count = dev_count,
                                    reader=dataset)
     if args.test_data:
         test_reader = create_pyreader(args, file_name=args.test_data,
                                   feed_list=train_ret['feed_list'],
                                   place=place,
                                   reader=dataset,
+                                  dev_count = dev_count,
                                   iterable=True)
 
     exe = fluid.Executor(place)
     exe.run(startup_program)
 
     if args.init_checkpoint:
-        # fluid.io.load_persistables(executor=exe, dirname='/home/work/zhouchengjie/lac/my_lac_model',
-                        #    main_program=train_program)  # 加载完全体模型
         utils.init_pretraining_params(exe, args.init_checkpoint, train_program)
 
     if args.test_data:
@@ -354,11 +354,6 @@ def do_train(args):
                 fetch_list=fetch_list,
                 feed=data[0],
             )
-            step += 1
-            if step % 2000 == 0:
-                test_process(exe, test_program, test_reader, train_ret)
-            if step % 4000 == 0:
-                fluid.io.save_persistables(exe, args.init_checkpoint, train_program)
 
     if args.test_data:
         test_process(exe, test_program, test_reader, train_ret)
