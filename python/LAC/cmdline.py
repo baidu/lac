@@ -26,10 +26,10 @@ from __future__ import unicode_literals
 
 import argparse
 parser = argparse.ArgumentParser(description='LAC Init Argments')
-parser.add_argument('--seg', action='store_true', 
+parser.add_argument('--segonly', action='store_true', 
                     help='run segment only if setting')
-parser.add_argument('--key', action='store_true', 
-                    help='run key model only if setting')
+parser.add_argument('--rank', action='store_true', 
+                    help='run rank model if setting')
 args = parser.parse_args()
 
 __all__ = [
@@ -43,10 +43,10 @@ def main(args=args):
     from LAC._compat import strdecode
     import sys
 
-    if args.seg:
+    if args.segonly:
         lac = LAC(mode='seg')
-    elif args.key:
-        lac = LAC(mode='key')
+    elif args.rank:
+        lac = LAC(mode='rank')
     else:
         lac = LAC()
 
@@ -57,9 +57,13 @@ def main(args=args):
             break
 
         line = strdecode(line.strip())
-        if args.seg:
+        if args.segonly:
             print(u" ".join(lac.run(line)))
-        else:
+        elif args.rank:
+            words, tags, words_rank = lac.run(line)
+            print(u" ".join(u"%s/%s/%s" % (word, tag, rank)
+                            for word, tag, rank in zip(words, tags, words_rank)))
+        else :
             words, tags = lac.run(line)
             print(u" ".join(u"%s/%s" % (word, tag)
                             for word, tag in zip(words, tags)))

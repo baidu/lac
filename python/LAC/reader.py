@@ -113,45 +113,48 @@ class Dataset(object):
         return words, tags
         # return "".join(words), tags
     
-    def mix_word_to_ids(self, text, key=False):
+    def mix_word_to_ids(self, text, rank=False):
         """convert mix (word and char) to word index
         Args:
-            text: 输入文本，key模型下是经过lac得到的分词结果以及词性标签
-            key : 模型是否是关键词模型
+            text: 输入文本，rank模型下是经过lac得到的分词结果以及词性标签
+            rank : 模型是否是关键词模型
 
         Return:
             LAC:
                 word_ids:  字词混合粒度的文本idx
-                del_index: 输入文本中，存在于词典中，所以以词粒度进行计算的单词，其除首位剩下的其他字符绝对位置，
-                           用于后续在计算出词性标签后，将全部文本变成char粒度时，重新补充，来进行人工字典干预。
-            KEY:
+                cancel_char_index: 输入文本中，存在于词典中，所以以词粒度进行计算的单词，其除首位剩下的其他字符绝对位置，
+                                   用于后续在计算出词性标签后，将全部文本变成char粒度时，重新补充，来进行人工字典干预。
+            RANK:
                 word_ids:  字词混合粒度的文本idx
                 tag_ids:   字词混合粒度的词性标签idx
-                add_index: 输入文本中，不存在于词典中，所以将词拆分成char粒度，由被拆分单词的绝对位置以及单词长度组成，
-                           用于在后续计算一个单词的关键度，合并其被拆分成多个char的标签。
+                division_word_index: 输入文本中，不存在于词典中，所以将词拆分成char粒度，由被拆分单词的绝对位置以及单词长度组成，
+                                     用于在后续计算一个单词的关键度，合并其被拆分成多个char的标签。
         """
         word_ids = []
 
-        if key:
+        if rank:
             text, tag = text
             tag_ids= []
         else:
             text = jieba.lcut(text, HMM=False)
         
-        word_ids, del_index, add_index = self.word_to_ids(text)
+        word_ids, cancel_char_index, division_word_index = self.word_to_ids(text)
 
-        if key:
-            for local, length in add_index:  # 由于部分单词被拆分成char，所以tag也要对应增加
+        if rank:
+            for local, length in division_word_index:  # 由于部分单词被拆分成char，所以tag也要对应增加
                 for _ in range(length-1):
                     tag.insert(local+1, tag[local].split('-')[0] + '-I')
             tag_ids = self.label_to_ids(tag)
-            return word_ids, tag_ids, add_index
+            return word_ids, tag_ids, division_word_index
             
         else:
-            return word_ids, del_index
+            return word_ids, cancel_char_index
 
     def word_to_ids(self, words, gradind='mix'):
-        """convert word to word index"""
+        """convert word to word index
+           cancel_char_index : 定位存在embedding字典里的单词，除首位剩下的其他字符绝对位置
+           division_word_index : 定位不存在embedding字典里的单词，其绝对位置以及单词长度
+        """
         word_ids = []
         if gradind == 'char':
             for word in words:
@@ -161,7 +164,7 @@ class Dataset(object):
             return word_ids
 
         else:
-            del_index, add_index= [], []
+            cancel_char_index, division_word_index= [], []
             start = 0
             for i, word in enumerate(words):
                 end = start + len(word)   
@@ -170,15 +173,15 @@ class Dataset(object):
                     word_id = self.word2id_dict.get(word, self.oov_id)
                     word_ids.append(word_id)
                     if len(word) > 1:
-                        del_index += [x for x in range(start+1, end)]  # 定位存在字典里的单词，除首位剩下的其他字符绝对位置
+                        cancel_char_index += [x for x in range(start+1, end)]  # 定位存在字典里的单词，除首位剩下的其他字符绝对位置
                 else:
                     for w in word:
                         w = self.word_replace_dict.get(w, w)
                         word_id = self.word2id_dict.get(w, self.oov_id)
                         word_ids.append(word_id)
-                    add_index.insert(0, [i, len(word)])  # 定位被拆分单词的绝对位置以及单词长度
+                    division_word_index.insert(0, [i, len(word)])  # 定位被拆分单词的绝对位置以及单词长度
                 start = end
-            return word_ids, del_index, add_index
+            return word_ids, cancel_char_index, division_word_index
 
     def label_to_ids(self, labels):
         """convert label to label index"""

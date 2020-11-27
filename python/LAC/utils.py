@@ -93,8 +93,6 @@ class DefaultArgs(object):
             model_path, config.get("DICT_FILE", "label_dict_path"))
         self.word_rep_dict_path = os.path.join(
             model_path, config.get("DICT_FILE", "word_rep_dict_path"))
-        # self.jieba_set_path = os.path.join(
-        #     model_path, config.get("DICT_FILE", "jieba_set_path"))
 
 
 def print_arguments(args):
