@@ -161,7 +161,6 @@ class LAC(object):
                 key_result.append([data[0], tag])
 
             self.reload(second_mode='lac')
-
             return key_result if self.batch else key_result[0]
     
     def parse_key(self, lines, result):
