@@ -335,11 +335,11 @@ class LAC(object):
         
             LAC: 
                 mix_data: 表示字词混合拆分的文本，后续会将词以及对应的label以char形式拆分，经过词典干预后再合并
-                add_local: 
+                del_localx: 
 
             KEY: 
                 tag_tensor: LAC词性标签转成tensor
-                local: 表示经过LAC后，重新word embedding时记录把词语拆分成char的绝对位置，用于后续合并
+                add_local: 表示经过LAC后，重新word embedding时记录把词语拆分成char的绝对位置，用于后续合并
         """
         lod = [0]
         data, add_local, tag, del_local = [], [], [], []

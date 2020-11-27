@@ -145,42 +145,8 @@ class Dataset(object):
                 for _ in range(length-1):
                     tag.insert(local+1, tag[local].split('-')[0] + '-I')
             tag_ids = self.label_to_ids(tag)
-        """
-        for i, word in enumerate(text):
-            if len(word) == 1 or word in self.word2id_dict.keys():
-                mix_text.append(word)
-                word = self.word_replace_dict.get(word, word)
-                word_id = self.word2id_dict.get(word, self.oov_id)
-                word_ids.append(word_id)
-                
-                if key:
-                    if tag[i] not in self.label2id_dict:
-                        tag[i] = "O"
-                    tag_id = self.label2id_dict[tag[i]]
-                    tag_ids.append(tag_id)
-                    start += 1
-            else:
-                for a, w in enumerate(word):
-                    mix_text.append(w)
-                    w = self.word_replace_dict.get(w, w)
-                    word_id = self.word2id_dict.get(w, self.oov_id)
-                    word_ids.append(word_id)
-
-                    if key:
-                        if tag[i] not in self.label2id_dict:
-                            tag[i] = "O"
-                        if a == 0:
-                            tag_id = self.label2id_dict[tag[i]]
-                        else:
-                            tag_id = self.label2id_dict[tag[i].split('-')[0] + '-I']
-                        tag_ids.append(tag_id)
-                if key:
-                    end = start + len(word)
-                    seg_local.insert(0, [start, end])
-                    start = end
-            """
-        if key:
             return word_ids, tag_ids, add_index
+            
         else:
             return word_ids, del_index
 

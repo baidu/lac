@@ -26,7 +26,7 @@ from __future__ import unicode_literals
 
 import argparse
 parser = argparse.ArgumentParser(description='LAC Init Argments')
-parser.add_argument('--segonly', action='store_true', 
+parser.add_argument('--seg', action='store_true', 
                     help='run segment only if setting')
 parser.add_argument('--key', action='store_true', 
                     help='run key model only if setting')
@@ -43,7 +43,7 @@ def main(args=args):
     from LAC._compat import strdecode
     import sys
 
-    if args.segonly:
+    if args.seg:
         lac = LAC(mode='seg')
     elif args.key:
         lac = LAC(mode='key')
@@ -57,7 +57,7 @@ def main(args=args):
             break
 
         line = strdecode(line.strip())
-        if args.segonly:
+        if args.seg:
             print(u" ".join(lac.run(line)))
         else:
             words, tags = lac.run(line)
