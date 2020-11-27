@@ -112,7 +112,7 @@ class LAC(object):
             返回LAC处理结果
             如果mode=='seg', 则只返回分词结果
             如果mode=='lac', 则同时返回分词与标签
-            如果mode=='rank', 则同时返回分词与关键程度结果
+            如果mode=='rank', 则同时返回分词,词性与关键度结果
         """
         if isinstance(texts, list) or isinstance(texts, tuple):
             self.batch = True
