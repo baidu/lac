@@ -43,7 +43,7 @@ def _get_abs_path(path): return os.path.normpath(
 
 DEFAULT_LAC = _get_abs_path('lac_model')
 DEFAULT_SEG = _get_abs_path('seg_model')
-DEFAULT_RANK = _get_abs_path('key_model')
+DEFAULT_RANK = _get_abs_path('rank_model')
 
 
 class LAC(object):
@@ -52,35 +52,40 @@ class LAC(object):
     def __init__(self, model_path=None, mode='lac', use_cuda=False):
         super(LAC, self).__init__()
         utils.check_cuda(use_cuda)
-        if model_path is None:
-            if mode == 'seg':
-                model_path = DEFAULT_SEG
-            else :
-                model_path = DEFAULT_LAC
-                rank_model_path = DEFAULT_RANK
+        
+        if mode == 'seg':
+            model_path = DEFAULT_SEG if model_path is None else model_path
+        elif mode == 'lac' :
+            model_path = DEFAULT_LAC if model_path is None else model_path
         else:
-            rank_model_path = '/'.join(model_path.split('/')[:-1]) + '/key_model'
+            model_path = DEFAULT_LAC if model_path is None else model_path
+            parent_path, model_name = os.path.split(model_path)
+
+            rank_model_path = DEFAULT_RANK if model_path is None else os.path.join(parent_path, 'rank_model')
+
+            self.rank_model_path = rank_model_path
+            self.rank_args = utils.DefaultArgs(self.rank_model_path)
+            rank_config = AnalysisConfig(self.rank_args.init_checkpoint)
+            rank_config.disable_glog_info()
+            self.rank_predictor = create_paddle_predictor(rank_config)
 
         self.mode = mode
+
         self.args = utils.DefaultArgs(model_path)
         self.args.use_cuda = use_cuda
         
         self.model_path = model_path
-        self.rank_model_path = rank_model_path
-        ################
+
         config = AnalysisConfig(self.args.init_checkpoint)
         config.disable_glog_info()
-        ################
 
         if use_cuda:
             self.place = fluid.CUDAPlace(
                 int(os.getenv('FLAGS_selected_gpus', '0')))
-            ################
             config.enable_use_gpu(memory_pool_init_size_mb=500,
                                   device_id=int(
                                       os.getenv('FLAGS_selected_gpus', '0')),
                                   )
-            ################
         else:
             self.place = fluid.CPUPlace()
 
@@ -89,17 +94,11 @@ class LAC(object):
 
         self.dataset = reader.Dataset(self.args)
 
-        self.predictor = create_paddle_predictor(config)
+        self.main_predictor = create_paddle_predictor(config)
 
         self.custom = None
         self.batch = False
-        self.return_tag = self.args.tag_type != 'seg'
-
-        if self.mode == 'rank':
-            self.rank_args = utils.DefaultArgs(self.rank_model_path)
-            rank_config = AnalysisConfig(self.rank_args.init_checkpoint)
-            rank_config.disable_glog_info()
-            self.rank_predictor = create_paddle_predictor(rank_config)
+        # self.return_tag = self.args.tag_type != 'seg'
 
     def run(self, texts):
         """执行模型预测过程
@@ -118,60 +117,65 @@ class LAC(object):
             self.batch = True
         else:
             if len(texts.strip()) == 0:
-                return ([], []) if self.return_tag else []
+                if self.mode == 'lac':
+                    return ([], []) 
+                elif self.mode == 'seg':
+                    return []
+                else:
+                    return ([], [], []) 
             texts = [texts]
             self.batch = False
 
-        tensor_words, cancel_local = self.texts2tensor(texts)
-        crf_decode = self.predictor.run([tensor_words])
+        tensor_words, words_length = self.texts2tensor(texts)
+        crf_decode = self.main_predictor.run([tensor_words])
 
-        result = self.parse_result(texts, crf_decode[0], self.dataset, cancel_local)
+        result = self.parse_result(texts, crf_decode[0], self.dataset, words_length)
 
-        if self.return_tag and self.mode == 'lac':
-            return result if self.batch else result[0]
+        if self.mode == 'lac':
+            return [[word, tag] for word, tag, tag_for_rank in result] if self.batch else result[0][:-1]
 
         elif self.mode == 'seg':
             if not self.batch:
                 return result[0][0]
-            return [word for word, _ in result]
+            return [word for word, tag, tag_for_rank in result]
 
         else:
-            rank_input, rank_output = [], []
-            for res in result:
-                rank_input.append([res[0], res[2]])
-                rank_output.append([res[0], res[1]])
-
-            tensor_words, tensor_tags, division_local = self.texts2tensor(rank_input, rank=True)
+            tags_for_rank, rank_result = [], []
+            for word, tag, tag_for_rank in result:
+                tags_for_rank.append(tag_for_rank)
+                rank_result.append([word, tag])
+            tensor_tags = self.tags2tensor(tags_for_rank)
             rank_decode = self.rank_predictor.run([tensor_words, tensor_tags])
-            tags = self.parse_rank(texts, rank_decode[0])
-
-            rank_result = []
-            for data, tag, seg in zip(rank_output, tags, division_local):  #  标签与单词对齐
-                if len(seg) != 0:
-                    seg = seg[::-1]
-                    for local, length in seg:
-                        tag = tag[:local] + [max(tag[local:local+length])] + tag[local+length:]
-                rank_result.append(data + [tag])
-
+            weights = self.parse_rank(tags_for_rank, rank_decode[0])
+                
+            for i in range(len(rank_result)):
+                rank_result[i].append(weights[i])
+    
             return rank_result if self.batch else rank_result[0]
     
     def parse_rank(self, lines, result):
         """将rank模型输出的Tensor转为明文"""
         offset_list = result.lod[0]
-        all_tags = result.data.int64_data()
+        all_weights = result.data.int64_data()
         batch_size = len(offset_list) - 1
 
         batch_out = []
         for sent_index in range(batch_size):
             begin, end = offset_list[sent_index], offset_list[sent_index + 1]
 
-            sent = lines[sent_index]
-            tags = all_tags[begin:end]
+            tags = lines[sent_index]
+            weights = all_weights[begin:end]
+            weights_out = []
+            for ind, tag in enumerate(tags):
+                if tag.endswith("B") or tag.endswith("S"):
+                    weights_out.append(weights[ind])
+                    continue
+                weights_out[-1] = max(weights_out[-1], weights[ind])
 
-            batch_out.append(tags)
+            batch_out.append(weights_out)
         return batch_out
 
-    def parse_result(self, lines, crf_decode, dataset, cancel_local):
+    def parse_result(self, lines, crf_decode, dataset, words_length):
         """将LAC模型输出的Tensor转为明文"""
         offset_list = crf_decode.lod[0]
         crf_decode = crf_decode.data.int64_data()
@@ -184,34 +188,33 @@ class LAC(object):
             sent = lines[sent_index]
             tags = [dataset.id2label_dict[str(id)]
                     for id in crf_decode[begin:end]]
+            tags_for_rank = tags[:]
 
             # 重新填充被省略的单词的char部分
-            if len(cancel_local) != 0:
-                sent_mix = cancel_local[sent_index]
-                for local in sent_mix:  
-                    tags.insert(local, tags[local-1].split('-')[0] + '-I')
+            if len(words_length) != 0:
+                word_length = words_length[sent_index]
+                for local in range(len(word_length)-1, -1, -1):  
+                    if word_length[local] > 1:
+                        for bias in range(1, word_length[local]):
+                            replenish_tag = tags[local].split('-')[0] + '-I'
+                            tags.insert(local+bias, replenish_tag)
 
             if self.custom:
                 self.custom.parse_customization(sent, tags)
 
-            sent_out, tags_out, rank_tags_out = [], [], []
+            sent_out, tags_out = [], []
             for ind, tag in enumerate(tags):
                 # for the first char
                 if len(sent_out) == 0 or tag.endswith("B") or tag.endswith("S"):
                     sent_out.append(sent[ind])
                     tags_out.append(tag[:-2])
-                    if self.mode == 'rank':
-                        rank_tags_out.append(tag)
                     continue
                 sent_out[-1] += sent[ind]
-                # lac取最后一个tag作为标签，key跳过
+                # lac取最后一个tag作为标签，rank跳过
                 if self.mode != 'rank':
                     tags_out[-1] = tag[:-2]
 
-            if self.mode == 'rank':
-                batch_out.append([sent_out, tags_out, rank_tags_out])
-            else:
-                batch_out.append([sent_out, tags_out])
+            batch_out.append([sent_out, tags_out, tags_for_rank])
         return batch_out
 
     def train(self, model_save_dir, train_data, test_data=None, iter_num=10, thread_num=10):
@@ -288,64 +291,52 @@ class LAC(object):
             self.custom = Customization()
         self.custom.add_word(word, sep)
     
-    def to_tensor(self, data, lod):
+    def to_tensor(self, data, lod, dtype="int64"):
         """
         Args:
             data: 文档或者词性标签的idx
             lod: 句子长度及顺序信息
         """
-        data_np = np.array(data, dtype="int64")
+        data_np = np.array(data, dtype=dtype)
         tensor = fluid.core.PaddleTensor(data_np)
         tensor.lod = [lod]
         tensor.shape = [lod[-1], 1]
         return tensor
 
-    def texts2tensor(self, texts, rank=False):
+    def texts2tensor(self, texts):
         """将文本输入转为Paddle输入的Tensor
 
         Args:
-            texts: 由string组成的list，模型输入的文本
-            lac和seg版本，texts = [line]，只要送文本就可以了
-            rank版本，texts=[[line], [tag]]，都要送进去
-        
+            texts: 由string组成的list，模型输入的文本     
         Returns:
             tensor: Paddle模型输入用的文本Tensor
-        
-            LAC: 
-                mix_data: 表示字词混合拆分的文本，后续会将词以及对应的label以char形式拆分，经过词典干预后再合并
-                cancel_local: 输入文本中，存在于词典中，所以以词粒度进行计算的单词，其除首位剩下的其他字符绝对位置，
-                              用于后续在计算出词性标签后，将全部文本变成char粒度时，重新补充，来进行人工字典干预。
-
-            RANK: 
-                tag_tensor: LAC词性标签转成tensor
-                division_word_index: 输入文本中，不存在于词典中，所以将词拆分成char粒度，由被拆分单词的绝对位置以及单词长度组成，
-                                     用于在后续计算一个单词的关键度，合并其被拆分成多个char的标签。
+            words_length: 
         """
-        lod = [0]
-        data, tag, division_local, cancel_local = [], [], [], []
+        lod, data, words_length = [0], [], []
         for i, text in enumerate(texts):
             if self.mode == 'seg':
-                text_inds = self.dataset.word_to_ids(text, gradind='char')
+                text_inds, word_length = self.dataset.word_to_ids(text, gradind='char')
+            else:  
+                text_inds, word_length = self.dataset.word_to_ids(text)
+                words_length.append(word_length) 
 
-            elif self.mode == 'lac' or rank is not True:  
-                text_inds, cancel_char_index = self.dataset.mix_word_to_ids(text)
-                cancel_local.append(cancel_char_index)
-
-            else:  # rank
-                text_inds, tag_inds, division_word_index = self.dataset.mix_word_to_ids(text, rank=True)
-                tag += tag_inds
-                division_local.append(division_word_index)
-            
             data += text_inds
             lod.append(len(text_inds) + lod[i])
 
         tensor = self.to_tensor(data, lod)
 
-        if rank is not True:
-            return tensor, cancel_local
+        return tensor, words_length
 
-        tag_tensor = self.to_tensor(tag, lod)
-        return tensor, tag_tensor, division_local
+    def tags2tensor(self, tags):
+        lod, data = [0], []
+        for i, tag in enumerate(tags):
+            tag_inds = self.dataset.label_to_ids(tag)
+            data += tag_inds
+
+            lod.append(len(tag_inds) + lod[i])
+
+        tag_tensor = self.to_tensor(data, lod)
+        return tag_tensor
 
 if __name__ == "__main__":
     lac = LAC('lac_model')
@@ -362,7 +353,7 @@ if __name__ == "__main__":
     print(' '.join(result))
 
     print('######### run:tag ##############')
-    result = lac.run(test_data, return_tag=True)
+    result = lac.run(test_data, mode='lac')
     for i, (sent, tags) in enumerate(result):
         result_list = ['(%s, %s)' % (ch, tag) for ch, tag in zip(sent, tags)]
         print(''.join(result_list))
@@ -379,7 +370,7 @@ if __name__ == "__main__":
     result = lac.run(test_data[0])
     print(' '.join(result))
     print('######### run:tag ##############')
-    result = lac.run(test_data, return_tag=True)
+    result = lac.run(test_data, mode='lac')
     for i, (sent, tags) in enumerate(result):
         result_list = ['(%s, %s)' % (ch, tag) for ch, tag in zip(sent, tags)]
         print(''.join(result_list))

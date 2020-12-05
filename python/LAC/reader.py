@@ -112,76 +112,35 @@ class Dataset(object):
 
         return words, tags
         # return "".join(words), tags
-    
-    def mix_word_to_ids(self, text, rank=False):
-        """convert mix (word and char) to word index
-        Args:
-            text: 输入文本，rank模型下是经过lac得到的分词结果以及词性标签
-            rank : 模型是否是关键词模型
 
-        Return:
-            LAC:
-                word_ids:  字词混合粒度的文本idx
-                cancel_char_index: 输入文本中，存在于词典中，所以以词粒度进行计算的单词，其除首位剩下的其他字符绝对位置，
-                                   用于后续在计算出词性标签后，将全部文本变成char粒度时，重新补充，来进行人工字典干预。
-            RANK:
-                word_ids:  字词混合粒度的文本idx
-                tag_ids:   字词混合粒度的词性标签idx
-                division_word_index: 输入文本中，不存在于词典中，所以将词拆分成char粒度，由被拆分单词的绝对位置以及单词长度组成，
-                                     用于在后续计算一个单词的关键度，合并其被拆分成多个char的标签。
-        """
-        word_ids = []
-
-        if rank:
-            text, tag = text
-            tag_ids= []
-        else:
-            text = jieba.lcut(text, HMM=False)
-        
-        word_ids, cancel_char_index, division_word_index = self.word_to_ids(text)
-
-        if rank:
-            for local, length in division_word_index:  # 由于部分单词被拆分成char，所以tag也要对应增加
-                for _ in range(length-1):
-                    tag.insert(local+1, tag[local].split('-')[0] + '-I')
-            tag_ids = self.label_to_ids(tag)
-            return word_ids, tag_ids, division_word_index
-            
-        else:
-            return word_ids, cancel_char_index
-
-    def word_to_ids(self, words, gradind='mix'):
+    def word_to_ids(self, text, gradind='mix', mode='pre'):
         """convert word to word index
-           cancel_char_index : 定位存在embedding字典里的单词，除首位剩下的其他字符绝对位置
-           division_word_index : 定位不存在embedding字典里的单词，其绝对位置以及单词长度
+           gradind  : char or mix word and char
+           word_ids : words to idx
+           word_length : words length
         """
-        word_ids = []
+        word_ids, word_length = [], []
         if gradind == 'char':
-            for word in words:
+            for word in text:
                 word = self.word_replace_dict.get(word, word)
                 word_id = self.word2id_dict.get(word, self.oov_id)
                 word_ids.append(word_id)
-            return word_ids
-
         else:
-            cancel_char_index, division_word_index= [], []
-            start = 0
-            for i, word in enumerate(words):
-                end = start + len(word)   
+            if mode == 'pre':
+                text = jieba.lcut(text, HMM=False)
+            for i, word in enumerate(text):  
                 if word in self.word2id_dict.keys() or len(word) == 1:
                     word = self.word_replace_dict.get(word, word)
                     word_id = self.word2id_dict.get(word, self.oov_id)
                     word_ids.append(word_id)
-                    if len(word) > 1:
-                        cancel_char_index += [x for x in range(start+1, end)]  # 定位存在字典里的单词，除首位剩下的其他字符绝对位置
+                    word_length.append(len(word))
                 else:
                     for w in word:
                         w = self.word_replace_dict.get(w, w)
                         word_id = self.word2id_dict.get(w, self.oov_id)
                         word_ids.append(word_id)
-                    division_word_index.insert(0, [i, len(word)])  # 定位被拆分单词的绝对位置以及单词长度
-                start = end
-            return word_ids, cancel_char_index, division_word_index
+                        word_length.append(1)
+        return word_ids, word_length
 
     def label_to_ids(self, labels):
         """convert label to label index"""
@@ -193,20 +152,20 @@ class Dataset(object):
             label_ids.append(label_id)
         return label_ids
 
-    def word_label_to_ids(self, words, labels):
-        
+    def train_to_ids(self, words, labels):
+        """if train, convert label to label inde"""
         if self.tag_type == 'seg':
-            word_ids = self.word_to_ids(words, gradind='char')
+            word_ids, word_length = self.word_to_ids(words, gradind='char')
             label_ids = self.label_to_ids(labels)
-            return word_ids, label_ids
         else:
             # words = "".join(words) # 可选用是否利用jieba分词粒度
             # words = jieba.lcut(words, HMM=False) 
-
-            word_ids, del_index, add_index = self.word_to_ids(words, gradind='mix')
+            word_ids, word_length = self.word_to_ids(words, gradind='mix', mode='train')
             label_ids = self.label_to_ids(labels)
-            
-            label_ids = [label_ids[i] for i in range(len(label_ids)) if (i not in del_index)]  # 删除lab
+            for i in range(len(word_ids)):
+                if word_length[i] > 1:
+                    for bias in range(i+1, i+word_length[i]):
+                        label_ids.pop(bias)
 
         return word_ids, label_ids
 
@@ -244,13 +203,7 @@ class Dataset(object):
                             continue
                         words = ''.join(words)
 
-                        # words, labels = line.strip("\n").split("\t")
-                        # words = words.split("\002")
-                        # labels = labels.split("\002")
-
-                    # word_ids = self.word_to_ids(words)  # 原始char输入
-                    # label_ids = self.label_to_ids(labels)
-                    word_ids, label_ids = self.word_label_to_ids(words, labels)  # 修改字词混合并进行标签对齐操作
+                    word_ids, label_ids = self.train_to_ids(words, labels)  # 修改字词混合并进行标签对齐操作
 
                     assert len(word_ids) == len(label_ids)
                     yield word_ids, label_ids

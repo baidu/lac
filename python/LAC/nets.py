@@ -345,7 +345,6 @@ def do_train(args):
     else:
         compiled_prog = fluid.compiler.CompiledProgram(train_program)
 
-    step = 0
     fetch_list = []
     for epoch_id in range(args.epoch):
         for data in train_reader():

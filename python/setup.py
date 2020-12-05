@@ -61,7 +61,7 @@ setup(
     install_requires=install_requires,
     packages=['LAC'],
     package_dir={'LAC': 'LAC'},
-    package_data={'LAC': ['*.py', 'lac_model/*/*', 'seg_model/*/*', 'key_model/*/*']},
+    package_data={'LAC': ['*.py', 'lac_model/*/*', 'seg_model/*/*', 'rank_model/*/*']},
     platforms="any",
     license='Apache 2.0',
     keywords=('lac chinese lexical analysis'),

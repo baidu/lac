@@ -61,7 +61,7 @@ def main(args=args):
             print(u" ".join(lac.run(line)))
         elif args.rank:
             words, tags, words_rank = lac.run(line)
-            print(u" ".join(u"%s/%s/%s" % (word, tag, rank)
+            print(u" ".join(u"%s/%s" % (word, rank)
                             for word, tag, rank in zip(words, tags, words_rank)))
         else :
             words, tags = lac.run(line)
