@@ -310,7 +310,7 @@ class LAC(object):
             texts: 由string组成的list，模型输入的文本     
         Returns:
             tensor: Paddle模型输入用的文本Tensor
-            words_length: 
+            words_length: 记录送入模型的每一个单词的长度
         """
         lod, data, words_length = [0], [], []
         for i, text in enumerate(texts):
