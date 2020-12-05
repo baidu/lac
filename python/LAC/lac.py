@@ -339,6 +339,7 @@ class LAC(object):
         return tag_tensor
 
 if __name__ == "__main__":
+    print('######### mode = lac ##############')
     lac = LAC('lac_model')
 
     test_data = [u'百度是一家高科技公司', u'LAC是一个优秀的分词工具', '']
@@ -353,10 +354,29 @@ if __name__ == "__main__":
     print(' '.join(result))
 
     print('######### run:tag ##############')
-    result = lac.run(test_data, mode='lac')
+    result = lac.run(test_data)
     for i, (sent, tags) in enumerate(result):
         result_list = ['(%s, %s)' % (ch, tag) for ch, tag in zip(sent, tags)]
         print(''.join(result_list))
+
+    print('######### mode = rank ##############')
+    lac = LAC('lac_model', mode='rank')
+
+    print('######### run:list ##############')
+    result = lac.run(test_data)
+    for res in result:
+        print(' '.join(res))
+
+    print('######### run:str ##############')
+    result = lac.run(test_data[0])
+    print(' '.join(result))
+
+    print('######### run:tag ##############')
+    result = lac.run(test_data)
+    for i, (sent, tags, word_rank) in enumerate(result):
+        result_list = ['(%s, %s, %s)' % (ch, tag, rank) for ch, tag, rank in zip(sent, tags, word_rank)]
+        print(''.join(result_list))
+
 
     # 重训模型
     lac.train(model_save_dir='models_test',
