@@ -164,8 +164,8 @@ class Dataset(object):
             label_ids = self.label_to_ids(labels)
             for i in range(len(word_ids)):
                 if word_length[i] > 1:
-                    for bias in range(i+1, i+word_length[i]):
-                        label_ids.pop(bias)
+                    for _ in range(1, word_length[i]):
+                        label_ids.pop(i+1)
 
         return word_ids, label_ids
 
