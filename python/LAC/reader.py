@@ -195,14 +195,15 @@ class Dataset(object):
                         texts = "".join(words)
                         word_ids, word_length = self.text_to_ids(texts)
 
-                    label_ids = self.label_to_ids(labels)
-
                     # 删掉以词粒度处理的多余的词性标签
                     if len(word_length) != 0:
                         for current in range(len(word_ids)):
                             if word_length[current] > 1:
                                 for _ in range(1, word_length[current]):
-                                    label_ids.pop(current + 1)
+                                    labels.pop(current)
+                                labels[current] = labels[current][:-1] + 'B'
+                    
+                    label_ids = self.label_to_ids(labels)
 
                     assert len(word_ids) == len(label_ids)
                     yield word_ids, label_ids
