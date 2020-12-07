@@ -202,6 +202,8 @@ class LAC(object):
                     tags_out.append(tag[:-2])
                     continue
                 sent_out[-1] += sent[ind]
+                # 取最后一个tag作为标签	
+                tags_out[-1] = tag[:-2]
 
             batch_out.append([sent_out, tags_out, tags_for_rank])
         return batch_out
