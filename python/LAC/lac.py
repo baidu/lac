@@ -282,18 +282,6 @@ class LAC(object):
         if self.custom is None:
             self.custom = Customization()
         self.custom.add_word(word, sep)
-    
-    def to_tensor(self, data, lod, dtype="int64"):
-        """
-        Args:
-            data: 文档或者词性标签的idx
-            lod: 句子长度及顺序信息
-        """
-        data_np = np.array(data, dtype=dtype)
-        tensor = fluid.core.PaddleTensor(data_np)
-        tensor.lod = [lod]
-        tensor.shape = [lod[-1], 1]
-        return tensor
 
     def texts2tensor(self, texts):
         """将文本输入转为Paddle输入的Tensor
@@ -314,20 +302,12 @@ class LAC(object):
             data += text_inds
             lod.append(len(text_inds) + lod[i])
 
-        tensor = self.to_tensor(data, lod)
+        data_np = np.array(data, dtype="int64")
+        tensor = fluid.core.PaddleTensor(data_np)
+        tensor.lod = [lod]
+        tensor.shape = [lod[-1], 1]
 
         return tensor, words_length
-
-    def tags2tensor(self, tags):
-        lod, data = [0], []
-        for i, tag in enumerate(tags):
-            tag_inds = self.dataset.label_to_ids(tag)
-            data += tag_inds
-
-            lod.append(len(tag_inds) + lod[i])
-
-        tag_tensor = self.to_tensor(data, lod)
-        return tag_tensor
 
 if __name__ == "__main__":
     print('######### mode = lac ##############')

@@ -157,21 +157,6 @@ class Dataset(object):
             label_ids.append(label_id)
         return label_ids
 
-    # def train_to_ids(self, words, labels):
-    #     """if train, convert label to label inde"""
-    #     if self.tag_type == 'seg':
-    #         word_ids, word_length = self.text_to_ids(words, grade='char')
-    #         label_ids = self.label_to_ids(labels)
-    #     else:
-    #         word_ids, word_length = self.text_to_ids(words, grade='mix')
-    #         label_ids = self.label_to_ids(labels)
-    #         for i in range(len(word_ids)):
-    #             if word_length[i] > 1:
-    #                 for _ in range(1, word_length[i]):
-    #                     label_ids.pop(i+1)
-
-    #     return word_ids, label_ids
-
     def file_reader(self, filename, mode="train"):
         """
         yield (word_idx, target_idx) one by one from file,
