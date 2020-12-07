@@ -25,9 +25,15 @@ def fun_add_word():
     seg_result = lac.run("他这一生红红火火了一把")
     print(seg_result)
 
+def rank():
+    # 选择使用rank模型
+    lac = LAC(model_path='models_general/rank_model', mode='rank')
+    result = lac.run('百度是一家很好的公司')
+    print(result)
+
 def run():
     # 选择使用分词模型
-    lac = LAC(model_path='/home/work/zhouchengjie/tmp/lac/models_general/lac_model')
+    lac = LAC(model_path='models_general/lac_model')
     # lac = LAC(model_path='tmp/lac/my_lac_model')
     result = lac.run('百度是一家很好的公司')
     print(result)

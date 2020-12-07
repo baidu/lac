@@ -57,14 +57,15 @@ class LAC(object):
             model_path = DEFAULT_SEG if model_path is None else model_path
         elif mode == 'lac' :
             model_path = DEFAULT_LAC if model_path is None else model_path
-        else:
-            model_path = DEFAULT_LAC if model_path is None else model_path
-            parent_path, model_name = os.path.split(model_path)
+        elif mode == 'rank':
+            rank_path = DEFAULT_RANK if model_path is None else model_path
 
-            rank_model_path = DEFAULT_RANK if model_path is None else os.path.join(parent_path, 'rank_model')
+            parent_path = os.path.split(rank_path)[0]
+            model_path = DEFAULT_LAC if model_path is None else os.path.join(parent_path, 'lac_model')
 
-            self.rank_model_path = rank_model_path
-            self.rank_args = utils.DefaultArgs(self.rank_model_path)
+            # init rank predictor
+            self.rank_path = rank_path
+            self.rank_args = utils.DefaultArgs(self.rank_path)
             rank_config = AnalysisConfig(self.rank_args.init_checkpoint)
             rank_config.disable_glog_info()
             self.rank_predictor = create_paddle_predictor(rank_config)
@@ -94,85 +95,76 @@ class LAC(object):
 
         self.dataset = reader.Dataset(self.args)
 
-        self.main_predictor = create_paddle_predictor(config)
+        self.predictor = create_paddle_predictor(config)
 
         self.custom = None
         self.batch = False
-        # self.return_tag = self.args.tag_type != 'seg'
 
     def run(self, texts):
         """执行模型预测过程
-
         Args:
             texts: 模型输入的文本，一个Unicode编码的字符串或者
                    由Unicode编码字符串组成的List
-
         Returns:
-            返回LAC处理结果
-            如果mode=='seg', 则只返回分词结果
-            如果mode=='lac', 则同时返回分词与标签
-            如果mode=='rank', 则同时返回分词,词性与关键度结果
+            if mode=='seg',  返回分词结果
+            if mode=='lac',  返回分词,词性结果
+            if mode=='rank', 返回分词,词性,重要性结果
         """
         if isinstance(texts, list) or isinstance(texts, tuple):
             self.batch = True
         else:
             if len(texts.strip()) == 0:
-                if self.mode == 'lac':
-                    return ([], []) 
-                elif self.mode == 'seg':
+                if self.mode == 'seg':
                     return []
-                else:
+                elif self.mode == 'lac':
+                    return ([], []) 
+                elif self.mode == 'rank':
                     return ([], [], []) 
             texts = [texts]
             self.batch = False
 
         tensor_words, words_length = self.texts2tensor(texts)
-        crf_decode = self.main_predictor.run([tensor_words])
+        crf_decode = self.predictor.run([tensor_words])
+        crf_result = self.parse_result(texts, crf_decode[0], self.dataset, words_length)
 
-        result = self.parse_result(texts, crf_decode[0], self.dataset, words_length)
-
-        if self.mode == 'lac':
-            return [[word, tag] for word, tag, tag_for_rank in result] if self.batch else result[0][:-1]
-
-        elif self.mode == 'seg':
-            if not self.batch:
-                return result[0][0]
-            return [word for word, tag, tag_for_rank in result]
+        if self.mode == 'seg':
+            result = [word for word, tag, tag_for_rank in crf_result] if self.batch else crf_result[0][0]
+            return result
 
         else:
-            tags_for_rank, rank_result = [], []
-            for word, tag, tag_for_rank in result:
-                tags_for_rank.append(tag_for_rank)
-                rank_result.append([word, tag])
-            tensor_tags = self.tags2tensor(tags_for_rank)
-            rank_decode = self.rank_predictor.run([tensor_words, tensor_tags])
-            weights = self.parse_rank(tags_for_rank, rank_decode[0])
-                
-            for i in range(len(rank_result)):
-                rank_result[i].append(weights[i])
+            result = [[word, tag] for word, tag, tag_for_rank in crf_result] if self.batch else crf_result[0][:-1]
+
+            if self.mode == 'lac':
+                return result 
+
+            elif self.mode == 'rank':
+                tags_for_rank = [tag_for_rank for word, tag, tag_for_rank in crf_result] if self.batch else crf_result[0][-1]
+                rank_decode = self.rank_predictor.run([tensor_words, crf_decode[0]])
+                weight = self.parse_rank(tags_for_rank, rank_decode[0]) 
+                result = [result[_] + [weight[_]] for _ in range(len(result))]
+
+                return result if self.batch else result[0]
     
-            return rank_result if self.batch else rank_result[0]
-    
-    def parse_rank(self, lines, result):
+    def parse_rank(self, tags_for_rank, result):
         """将rank模型输出的Tensor转为明文"""
         offset_list = result.lod[0]
-        all_weights = result.data.int64_data()
+        rank_weight = result.data.int64_data()
         batch_size = len(offset_list) - 1
 
         batch_out = []
         for sent_index in range(batch_size):
             begin, end = offset_list[sent_index], offset_list[sent_index + 1]
 
-            tags = lines[sent_index]
-            weights = all_weights[begin:end]
-            weights_out = []
+            tags = tags_for_rank[sent_index]
+            weight = rank_weight[begin:end]
+            weight_out = []
             for ind, tag in enumerate(tags):
                 if tag.endswith("B") or tag.endswith("S"):
-                    weights_out.append(weights[ind])
+                    weight_out.append(weight[ind])
                     continue
-                weights_out[-1] = max(weights_out[-1], weights[ind])
+                weight_out[-1] = max(weight_out[-1], weight[ind])
 
-            batch_out.append(weights_out)
+            batch_out.append(weight_out)
         return batch_out
 
     def parse_result(self, lines, crf_decode, dataset, words_length):
@@ -193,11 +185,11 @@ class LAC(object):
             # 重新填充被省略的单词的char部分
             if len(words_length) != 0:
                 word_length = words_length[sent_index]
-                for local in range(len(word_length)-1, -1, -1):  
-                    if word_length[local] > 1:
-                        for bias in range(1, word_length[local]):
-                            replenish_tag = tags[local].split('-')[0] + '-I'
-                            tags.insert(local+bias, replenish_tag)
+
+                for current in range(len(word_length)-1, -1, -1):  
+                    if word_length[current] > 1:
+                        for offset in range(1, word_length[current]):
+                            tags.insert(current + offset, tags[current][:-2] + '-I')
 
             if self.custom:
                 self.custom.parse_customization(sent, tags)
@@ -210,9 +202,6 @@ class LAC(object):
                     tags_out.append(tag[:-2])
                     continue
                 sent_out[-1] += sent[ind]
-                # lac取最后一个tag作为标签，rank跳过
-                if self.mode != 'rank':
-                    tags_out[-1] = tag[:-2]
 
             batch_out.append([sent_out, tags_out, tags_for_rank])
         return batch_out
@@ -227,6 +216,7 @@ class LAC(object):
             iter_num: 训练数据的迭代次数
             thread_num: 执行训练的线程数
         """
+        self.args.model = self.mode
         self.args.train_data = train_data
         self.args.test_data = test_data
         self.args.epoch = iter_num
@@ -259,7 +249,7 @@ class LAC(object):
         self.args = utils.DefaultArgs(model_dir)
         self.args.use_cuda = use_cuda
         self.dataset = reader.Dataset(self.args)
-        self.return_tag = self.args.tag_type != 'seg'
+        self.model = self.args.model
 
         self.model_path = model_dir
         config = AnalysisConfig(os.path.join(model_dir, 'model'))
@@ -305,7 +295,6 @@ class LAC(object):
 
     def texts2tensor(self, texts):
         """将文本输入转为Paddle输入的Tensor
-
         Args:
             texts: 由string组成的list，模型输入的文本     
         Returns:
@@ -315,9 +304,9 @@ class LAC(object):
         lod, data, words_length = [0], [], []
         for i, text in enumerate(texts):
             if self.mode == 'seg':
-                text_inds, word_length = self.dataset.word_to_ids(text, gradind='char')
+                text_inds, word_length = self.dataset.text_to_ids(text, grade='char')
             else:  
-                text_inds, word_length = self.dataset.word_to_ids(text)
+                text_inds, word_length = self.dataset.text_to_ids(text)
                 words_length.append(word_length) 
 
             data += text_inds

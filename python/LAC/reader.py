@@ -63,7 +63,7 @@ class Dataset(object):
         self.id2label_dict = load_kv_dict(args.label_dict_path)
         self.word_replace_dict = load_kv_dict(args.word_rep_dict_path)
         self.oov_id = self.word2id_dict['OOV']
-        self.tag_type = args.tag_type
+        self.model = args.model
 
         self.args = args
         self.dev_count = dev_count
@@ -110,36 +110,41 @@ class Dataset(object):
             tags += [tag + '-B'] + [tag + '-I'] * (len(word) - 1)
             words.append(word)
 
-        return words, tags
-        # return "".join(words), tags
+        return "".join(words), tags
+    
+    def word_to_ids(self, words):
+        """convert words to word index"""
+        word_ids = []
+        for word in words:
+            word = self.word_replace_dict.get(word, word)
+            word_id = self.word2id_dict.get(word, self.oov_id)
+            word_ids.append(word_id)
+        return word_ids
 
-    def word_to_ids(self, text, gradind='mix', mode='pre'):
-        """convert word to word index
-           gradind  : char or mix word and char
-           word_ids : words to idx
-           word_length : words length
+    def text_to_ids(self, text, grade='mix'):
+        """convert text to word index
+           Args:
+               grade       : char or mix (word and char)
+           Return:
+               word_ids    : words to idx
+               word_length : words length
         """
         word_ids, word_length = [], []
-        if gradind == 'char':
-            for word in text:
-                word = self.word_replace_dict.get(word, word)
-                word_id = self.word2id_dict.get(word, self.oov_id)
-                word_ids.append(word_id)
-        else:
-            if mode == 'pre':
-                text = jieba.lcut(text, HMM=False)
-            for i, word in enumerate(text):  
-                if word in self.word2id_dict.keys() or len(word) == 1:
-                    word = self.word_replace_dict.get(word, word)
-                    word_id = self.word2id_dict.get(word, self.oov_id)
-                    word_ids.append(word_id)
-                    word_length.append(len(word))
+
+        if grade == 'char':
+            word_ids = self.word_to_ids(text)
+
+        elif grade == 'mix':
+            text = jieba.lcut(text, HMM=False)
+
+            for word in text:  
+                if word in self.word2id_dict.keys():
+                    word_ids += self.word_to_ids([word])
+                    word_length += [len(word)]
                 else:
-                    for w in word:
-                        w = self.word_replace_dict.get(w, w)
-                        word_id = self.word2id_dict.get(w, self.oov_id)
-                        word_ids.append(word_id)
-                        word_length.append(1)
+                    word_ids += self.word_to_ids(word)
+                    word_length += [1] * len(word)
+
         return word_ids, word_length
 
     def label_to_ids(self, labels):
@@ -152,23 +157,20 @@ class Dataset(object):
             label_ids.append(label_id)
         return label_ids
 
-    def train_to_ids(self, words, labels):
-        """if train, convert label to label inde"""
-        if self.tag_type == 'seg':
-            word_ids, word_length = self.word_to_ids(words, gradind='char')
-            label_ids = self.label_to_ids(labels)
-        else:
-            # words = "".join(words) # 可选用是否利用jieba分词粒度
-            # words = jieba.lcut(words, HMM=False) 
-            word_ids, word_length = self.word_to_ids(words, gradind='mix', mode='train')
-            label_ids = self.label_to_ids(labels)
-            for i in range(len(word_ids)):
-                if word_length[i] > 1:
-                    for _ in range(1, word_length[i]):
-                        label_ids.pop(i+1)
+    # def train_to_ids(self, words, labels):
+    #     """if train, convert label to label inde"""
+    #     if self.tag_type == 'seg':
+    #         word_ids, word_length = self.text_to_ids(words, grade='char')
+    #         label_ids = self.label_to_ids(labels)
+    #     else:
+    #         word_ids, word_length = self.text_to_ids(words, grade='mix')
+    #         label_ids = self.label_to_ids(labels)
+    #         for i in range(len(word_ids)):
+    #             if word_length[i] > 1:
+    #                 for _ in range(1, word_length[i]):
+    #                     label_ids.pop(i+1)
 
-        return word_ids, label_ids
-
+    #     return word_ids, label_ids
 
     def file_reader(self, filename, mode="train"):
         """
@@ -185,25 +187,37 @@ class Dataset(object):
                     yield (word_ids,)
             else:
                 cnt = 0
-                for a, line in enumerate(fread):
+                for line in fread:
                     if (len(line.strip()) == 0):
                         continue
-                    if self.tag_type == 'seg':
-                        words, labels = self.parse_seg(line)
-                    elif self.tag_type == 'tag':
-                        words, labels = self.parse_tag(line)
+                    if self.model == 'seg':
+                        texts, labels = self.parse_seg(line)
+                        word_ids, word_length = self.text_to_ids(texts, grade='char')
+
+                    elif self.model == 'lac':
+                        texts, labels = self.parse_tag(line)
+                        word_ids, word_length = self.text_to_ids(texts)
+
                     else:
                         line = line.strip('\n').split('\t')
                         if len(line) != 2:
                             continue
-                        words, labels = line  # 训练数据处理过程
-                        words = [word for i, word in enumerate(words) if i%2==0]
+                        texts, labels = line
+                        words = [word for i, word in enumerate(texts) if i%2==0]
                         labels = [x for x in labels.split('\002')]
                         if len(words) != len(labels):
                             continue
-                        words = ''.join(words)
+                        texts = "".join(words)
+                        word_ids, word_length = self.text_to_ids(texts)
 
-                    word_ids, label_ids = self.train_to_ids(words, labels)  # 修改字词混合并进行标签对齐操作
+                    label_ids = self.label_to_ids(labels)
+
+                    # 删掉以词粒度处理的多余的词性标签
+                    if len(word_length) != 0:
+                        for current in range(len(word_ids)):
+                            if word_length[current] > 1:
+                                for _ in range(1, word_length[current]):
+                                    label_ids.pop(current + 1)
 
                     assert len(word_ids) == len(label_ids)
                     yield word_ids, label_ids
@@ -213,7 +227,7 @@ class Dataset(object):
                     pad_num = self.dev_count - \
                         (cnt % self.args.batch_size) % self.dev_count
                     for i in range(pad_num):
-                        if self.tag_type == 'seg':
+                        if self.model == 'seg':
                             yield [self.oov_id], [self.label2id_dict['-S']]
                         else:
                             yield [self.oov_id], [self.label2id_dict['O']]

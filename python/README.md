@@ -92,18 +92,18 @@ lac = LAC(mode='rank')
 
 # 单个样本输入，输入为Unicode编码的字符串
 text = u"LAC是个优秀的分词工具"
-key_result = lac.run(text)
+rank_result = lac.run(text)
 
 # 批量样本输入, 输入为多个句子组成的list，平均速率会更快
 texts = [u"LAC是个优秀的分词工具", u"百度是一家高科技公司"]
-key_result = lac.run(texts)
+rank_result = lac.run(texts)
 ```
 - 输出：
 
 ```text
-【单样本】：key_result = [['LAC', '是', '个', '优秀', '的', '分词', '工具'], 
+【单样本】：rank_result = [['LAC', '是', '个', '优秀', '的', '分词', '工具'], 
                         [nz, v, q, a, u, n, n],[3, 0, 0, 2, 0, 3, 1]]
-【批量样本】：key_result = [
+【批量样本】：rank_result = [
                     (['LAC', '是', '个', '优秀', '的', '分词', '工具'], 
                      [nz, v, q, a, u, n, n], [3, 0, 0, 2, 0, 3, 1]), 
                     (['百度', '是', '一家', '高科技', '公司'], 
