@@ -19,11 +19,12 @@
 """
 The file_reader converts raw corpus to input.
 """
+import jieba_fast as jieba
 import argparse
 import logging
 import __future__
 import io
-import jieba_fast as jieba
+
 
 
 def load_kv_dict(dict_path,
@@ -82,19 +83,6 @@ class Dataset(object):
         """num of line of file"""
         return sum(1 for line in open(filename, "rb"))
 
-    def parse_seg(self, line):
-        """convert segment data to lac data format"""
-        tags = []
-        words = line.strip().split()
-
-        for word in words:
-            if len(word) == 1:
-                tags.append('-S')
-            else:
-                tags += ['-B'] + ['-I'] * (len(word) - 2) + ['-E']
-
-        return "".join(words), tags
-
     def parse_tag(self, line):
         """convert tagging data to lac data format"""
         tags = []
@@ -110,7 +98,7 @@ class Dataset(object):
             tags += [tag + '-B'] + [tag + '-I'] * (len(word) - 1)
             words.append(word)
 
-        return "".join(words), tags
+        return jieba.lcut("".join(words), HMM=False), tags
     
     def word_to_ids(self, words):
         """convert words to word index"""
@@ -121,29 +109,20 @@ class Dataset(object):
             word_ids.append(word_id)
         return word_ids
 
-    def text_to_ids(self, text, grade='mix'):
-        """convert text to word index
-           Args:
-               grade       : char or mix (word and char)
-           Return:
-               word_ids    : words to idx
-               word_length : words length
+    def text_to_ids(self, text):
+        """convert text to word index 
+           lac/rank using mix char and word granularity
+           seg using char granularity
         """
         word_ids, word_length = [], []
 
-        if grade == 'char':
-            word_ids = self.word_to_ids(text)
-
-        elif grade == 'mix':
-            text = jieba.lcut(text, HMM=False)
-
-            for word in text:  
-                if word in self.word2id_dict.keys():
-                    word_ids += self.word_to_ids([word])
-                    word_length += [len(word)]
-                else:
-                    word_ids += self.word_to_ids(word)
-                    word_length += [1] * len(word)
+        for word in text:  
+            if word in self.word2id_dict.keys():
+                word_ids += self.word_to_ids([word])
+                word_length += [len(word)]
+            else:
+                word_ids += self.word_to_ids(word)
+                word_length += [1] * len(word)
 
         return word_ids, word_length
 
@@ -175,25 +154,21 @@ class Dataset(object):
                 for line in fread:
                     if (len(line.strip()) == 0):
                         continue
-                    if self.model == 'seg':
-                        texts, labels = self.parse_seg(line)
-                        word_ids, word_length = self.text_to_ids(texts, grade='char')
+                        
+                    texts, labels = self.parse_tag(line)
+                    word_ids, word_length = self.text_to_ids(texts)
 
-                    elif self.model == 'lac':
-                        texts, labels = self.parse_tag(line)
-                        word_ids, word_length = self.text_to_ids(texts)
-
-                    else:
-                        line = line.strip('\n').split('\t')
-                        if len(line) != 2:
-                            continue
-                        texts, labels = line
-                        words = [word for i, word in enumerate(texts) if i%2==0]
-                        labels = [x for x in labels.split('\002')]
-                        if len(words) != len(labels):
-                            continue
-                        texts = "".join(words)
-                        word_ids, word_length = self.text_to_ids(texts)
+                    # 训练用处理语料方式
+                    # line = line.strip('\n').split('\t')
+                    # if len(line) != 2:
+                    #     continue
+                    # texts, labels = line
+                    # words = [word for i, word in enumerate(texts) if i%2==0]
+                    # labels = [x for x in labels.split('\002')]
+                    # if len(words) != len(labels):
+                    #     continue
+                    # texts = "".join(words)
+                    # word_ids, word_length = self.text_to_ids(texts)
 
                     # 删掉以词粒度处理的多余的词性标签
                     if len(word_length) != 0:
@@ -215,12 +190,37 @@ class Dataset(object):
                     for i in range(pad_num):
                         if self.model == 'seg':
                             yield [self.oov_id], [self.label2id_dict['-S']]
-                        else:
+                        elif self.model == 'lac':
                             yield [self.oov_id], [self.label2id_dict['O']]
             fread.close()
 
         return wrapper
 
+class SegDataset(Dataset):
+    """seg model data reader"""
+    def __init__(self, args, dev_count=10):
+        Dataset.__init__(self, args, dev_count)
+
+    def text_to_ids(self, text):
+        """convert text to word index 
+           The seg model's word_length is set to an empty list
+        """
+        word_ids, word_length = super(SegDataset, self).text_to_ids(text)
+        word_length = []
+        return word_ids, word_length
+    
+    def parse_tag(self, line):
+        """convert segment data to lac data format"""
+        tags = []
+        words = line.strip().split()
+
+        for word in words:
+            if len(word) == 1:
+                tags.append('-S')
+            else:
+                tags += ['-B'] + ['-I'] * (len(word) - 2) + ['-E']
+
+        return "".join(words), tags
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(__doc__)

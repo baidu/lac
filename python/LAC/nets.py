@@ -273,7 +273,7 @@ def test_process(exe, program, reader, test_ret):
           % (precision, recall, f1))
 
 
-def do_train(args):
+def do_train(args, dataset):
     """执行训练过程
 
     Args:
@@ -295,7 +295,9 @@ def do_train(args):
         os.environ['CPU_NUM'] = str(dev_count)
         place = fluid.CPUPlace()
 
-    dataset = Dataset(args, dev_count)
+    # dataset = Dataset(args, dev_count)
+    dataset.args = args
+    dataset.dev_count = dev_count
 
     with fluid.program_guard(train_program, startup_program):
         train_program.random_seed = args.random_seed

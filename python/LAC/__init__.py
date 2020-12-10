@@ -20,4 +20,5 @@ name = 'lac'
 version = "2.0.5"
 version_info = (2, 0, 5, 0)
 
+# from .lac import LAC
 from .lac import LAC
