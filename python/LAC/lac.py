@@ -33,15 +33,32 @@ from paddle.fluid.core import create_paddle_predictor
 from . import reader
 from . import utils
 from . import nets
+
 from .custom import Customization
 from ._compat import *
 from .models import Model, SegModel, LacModel, RankModel
+
+def _get_abs_path(path): return os.path.normpath(
+    os.path.join(os.getcwd(), os.path.dirname(__file__), path))
+
+DEFAULT_LAC = _get_abs_path('lac_model')
+DEFAULT_SEG = _get_abs_path('seg_model')
+DEFAULT_RANK = _get_abs_path('rank_model')
+
+PATH_DICT = {
+                "lac": DEFAULT_LAC,
+                "seg": DEFAULT_SEG,
+                "rank":DEFAULT_RANK
+             }
+
 
 class LAC(object):
     """Docstring for LAC"""
     def __init__(self, model_path=None, mode='lac', use_cuda=False):
         super(LAC, self).__init__()
         utils.check_cuda(use_cuda)
+
+        model_path = model_path if model_path else PATH_DICT[mode]
 
         if mode == 'seg':
             model = SegModel(model_path, mode, use_cuda)
@@ -60,10 +77,9 @@ class LAC(object):
         Returns:
             if mode=='seg',  返回分词结果
             if mode=='lac',  返回分词,词性结果
-            if mode=='rank', 返回分词,词性,重要性结果
+            if mode=='rank', 返回分词,词性,词语重要性结果
         """
-        result = self.model.run(texts)
-        return result
+        return self.model.run(texts)
     
     def train(self, model_save_dir, train_data, test_data=None, iter_num=10, thread_num=10):
         """执行模型增量训练

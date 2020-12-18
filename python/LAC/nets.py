@@ -273,7 +273,7 @@ def test_process(exe, program, reader, test_ret):
           % (precision, recall, f1))
 
 
-def do_train(args, dataset):
+def do_train(args, dataset, segment_tool):
     """执行训练过程
 
     Args:
@@ -298,6 +298,7 @@ def do_train(args, dataset):
     # dataset = Dataset(args, dev_count)
     dataset.args = args
     dataset.dev_count = dev_count
+    dataset.segment_tool = segment_tool
 
     with fluid.program_guard(train_program, startup_program):
         train_program.random_seed = args.random_seed

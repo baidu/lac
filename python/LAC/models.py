@@ -17,36 +17,30 @@
 #################################################################################
 """
 本文件定义了Model基类以及它的子类:LacModel, SegModel, RankModel
-"""
-
+""" 
 import os
 import shutil
 import logging
 
 import numpy as np
-import jieba_fast as jieba
 import paddle.fluid as fluid
+
 from paddle.fluid.core import PaddleTensor
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
 
+from .segment import Segment
 from . import reader
 from . import utils
 from . import nets
 from .custom import Customization
 
-
-def _get_abs_path(path): return os.path.normpath(
-    os.path.join(os.getcwd(), os.path.dirname(__file__), path))
-
-DEFAULT_LAC = _get_abs_path('lac_model')
-DEFAULT_SEG = _get_abs_path('seg_model')
-DEFAULT_RANK = _get_abs_path('rank_model')
-
 class Model(object):
     """Docstring for Model"""
-    def __init__(self, model_path=DEFAULT_LAC, mode='lac', use_cuda=False):
+    def __init__(self, model_path, mode, use_cuda):
         super(Model, self).__init__()
+
+        self.len_tensor = 0
 
         self.mode = mode
         self.model_path = model_path
@@ -73,14 +67,16 @@ class Model(object):
         self.exe = fluid.Executor(self.place)
         self.dataset = reader.Dataset(self.args)
         self.predictor = create_paddle_predictor(config)
+        self.segment_tool = None
         self.custom = None
         self.batch = False
-    
+
     def run(self, texts):
         """文本输入经过模型转为运行结果Tensor"""
         tensor_words, words_length = self.texts2tensor(texts)
         crf_decode = self.predictor.run([tensor_words])
         crf_result = self.parse_result(texts, crf_decode[0], self.dataset, words_length)
+
         return {
                 "crf_decode": crf_decode,
                 "crf_result": crf_result,
@@ -106,15 +102,15 @@ class Model(object):
 
         lod, data, words_length = [0], [], []
         for i, text in enumerate(texts): 
-            # 复写jieba
-            text = jieba.lcut(text, HMM=False)
+            text = self.segment_tool.fast_cut(text)
 
             text_inds, word_length = self.dataset.text_to_ids(text)
-            
             words_length.append(word_length)
+
             data += text_inds
             lod.append(len(text_inds) + lod[i])
 
+        self.len_tensor += len(data)
         tensor = self.to_tensor(data, lod)
 
         return tensor, words_length
@@ -176,7 +172,7 @@ class Model(object):
 
         scope = fluid.core.Scope()
         with fluid.scope_guard(scope):
-            test_program, fetch_list = nets.do_train(self.args, self.dataset)
+            test_program, fetch_list = nets.do_train(self.args, self.dataset, self.segment_tool)
 
             fluid.io.save_inference_model(os.path.join(model_save_dir, 'model'),
                                           ['words'],
@@ -214,7 +210,10 @@ class Model(object):
 class LacModel(Model):
     """Docstring for LAC Model"""
     def __init__(self, model_path, mode, use_cuda):
-        Model.__init__(self, model_path=DEFAULT_LAC, mode='lac', use_cuda=False) 
+        super(LacModel, self).__init__(model_path, mode, use_cuda) 
+
+        seg_dict_path = os.path.join(model_path, "conf", "small_seg.dic")
+        self.segment_tool = Segment(dict_path=seg_dict_path)
 
     def run(self, texts):
         if isinstance(texts, list) or isinstance(texts, tuple):
@@ -231,14 +230,14 @@ class LacModel(Model):
         return result
 
     def simple_run(self, texts):
-        """lac给rank模型调用时返回的结果"""
+        """lac被rank模型调用时返回的结果"""
         lac_result = super(LacModel, self).run(texts)
         return lac_result
 
 class SegModel(Model):
     """Docstring for Seg Model"""
     def __init__(self, model_path, mode, use_cuda):
-        Model.__init__(self, model_path=DEFAULT_SEG, mode='seg', use_cuda=False) 
+        super(SegModel, self).__init__(model_path, mode, use_cuda) 
         self.dataset = reader.SegDataset(self.args)
     
     def run(self, texts):
@@ -259,7 +258,7 @@ class SegModel(Model):
         """文本输入转为Paddle输入的Tensor"""
         lod, data, words_length = [0], [], []
         for i, text in enumerate(texts):
-            text_inds = self.dataset.text_to_ids(text)[0]
+            text_inds = self.dataset.word_to_ids(text)
             data += text_inds
             lod.append(len(text_inds) + lod[i])
 
@@ -303,7 +302,7 @@ class RankModel(Model):
     """Docstring for Rank Model"""
     def __init__(self, model_path, mode, use_cuda):
         # init rank model
-        Model.__init__(self, model_path=DEFAULT_RANK, mode='rank', use_cuda=False) 
+        super(RankModel, self).__init__(model_path, mode, use_cuda) 
 
         # parsing the lac model address
         parent_path = os.path.split(model_path)[0]
@@ -330,8 +329,8 @@ class RankModel(Model):
         crf_result = lac_result["crf_result"]
         tensor_words = lac_result["tensor_words"]
 
-        result = [[word, tag] for word, tag, tag_for_rank in crf_result] if self.batch else crf_result[0][:-1]
-        tags_for_rank = [tag_for_rank for word, tag, tag_for_rank in crf_result] if self.batch else crf_result[0][-1]
+        result = [[word, tag] for word, tag, tag_for_rank in crf_result]
+        tags_for_rank = [tag_for_rank for word, tag, tag_for_rank in crf_result]
 
         rank_decode = self.predictor.run([tensor_words, crf_decode[0]])
         weight = self.parse_result(tags_for_rank, rank_decode[0]) 
