@@ -23,12 +23,12 @@
 import os
 import math
 
-import paddle.fluid as fluid
 import paddle
 import multiprocessing
+import paddle.fluid as fluid
 
-from .reader import Dataset
 from . import utils
+from .reader import Dataset
 
 
 def lex_net(word, args, vocab_size, num_labels, target=None):

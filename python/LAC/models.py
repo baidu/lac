@@ -29,10 +29,10 @@ from paddle.fluid.core import PaddleTensor
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
 
-from .segment import Segment
 from . import reader
 from . import utils
 from . import nets
+from .segment import Segment
 from .custom import Customization
 
 class Model(object):

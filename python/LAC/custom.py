@@ -24,11 +24,9 @@ from io import open
 import logging
 
 try:
-    # from .triedtree import TriedTree
     from ._compat import strdecode
     from .prefix_tree import TriedTree
 except:
-    # from triedtree import TriedTree
     from _compat import strdecode
     from prefix_tree import TriedTree
 

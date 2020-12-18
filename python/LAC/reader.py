@@ -19,11 +19,11 @@
 """
 The file_reader converts raw corpus to input.
 """
-# import jieba_fast as jieba
+import io
 import argparse
 import logging
 import __future__
-import io
+
 
 
 def load_kv_dict(dict_path,

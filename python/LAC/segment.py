@@ -18,13 +18,13 @@
 """
 本文件定义了分词及其实现
 """
-from math import log
-
 import io
 import re
 import sys
 import time
 import logging
+
+from math import log
 from .prefix_tree import TriedTree
 
 

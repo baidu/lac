@@ -34,8 +34,8 @@ from . import reader
 from . import utils
 from . import nets
 
-from .custom import Customization
 from ._compat import *
+from .custom import Customization
 from .models import Model, SegModel, LacModel, RankModel
 
 def _get_abs_path(path): return os.path.normpath(
