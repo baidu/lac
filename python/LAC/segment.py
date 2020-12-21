@@ -23,8 +23,8 @@ import re
 import sys
 import time
 import logging
-
 from math import log
+
 from .prefix_tree import TriedTree
 
 

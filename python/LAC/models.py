@@ -24,14 +24,13 @@ import logging
 
 import numpy as np
 import paddle.fluid as fluid
-
 from paddle.fluid.core import PaddleTensor
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
 
-from . import reader
-from . import utils
 from . import nets
+from . import utils
+from . import reader
 from .segment import Segment
 from .custom import Customization
 
@@ -39,8 +38,6 @@ class Model(object):
     """Docstring for Model"""
     def __init__(self, model_path, mode, use_cuda):
         super(Model, self).__init__()
-
-        self.len_tensor = 0
 
         self.mode = mode
         self.model_path = model_path
@@ -110,7 +107,6 @@ class Model(object):
             data += text_inds
             lod.append(len(text_inds) + lod[i])
 
-        self.len_tensor += len(data)
         tensor = self.to_tensor(data, lod)
 
         return tensor, words_length
@@ -229,7 +225,7 @@ class LacModel(Model):
 
         return result
 
-    def simple_run(self, texts):
+    def call_run(self, texts):
         """lac被rank模型调用时返回的结果"""
         lac_result = super(LacModel, self).run(texts)
         return lac_result
@@ -323,7 +319,7 @@ class RankModel(Model):
         if self.custom is not None:
             self.lac.custom = self.custom
             
-        lac_result = self.lac.simple_run(texts)
+        lac_result = self.lac.call_run(texts)
         
         crf_decode = lac_result["crf_decode"]
         crf_result = lac_result["crf_result"]

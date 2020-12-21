@@ -30,10 +30,9 @@ from paddle.fluid.core import PaddleTensor
 from paddle.fluid.core import AnalysisConfig
 from paddle.fluid.core import create_paddle_predictor
 
-from . import reader
-from . import utils
 from . import nets
-
+from . import utils
+from . import reader
 from ._compat import *
 from .custom import Customization
 from .models import Model, SegModel, LacModel, RankModel
@@ -51,13 +50,13 @@ PATH_DICT = {
                 "rank":DEFAULT_RANK
              }
 
-
 class LAC(object):
     """Docstring for LAC"""
     def __init__(self, model_path=None, mode='lac', use_cuda=False):
         super(LAC, self).__init__()
         utils.check_cuda(use_cuda)
 
+        assert mode in PATH_DICT, 'The mode should be in "lac", "seg" or "rank"'
         model_path = model_path if model_path else PATH_DICT[mode]
 
         if mode == 'seg':

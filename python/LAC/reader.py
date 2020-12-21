@@ -20,8 +20,8 @@
 The file_reader converts raw corpus to input.
 """
 import io
-import argparse
 import logging
+import argparse
 import __future__
 
 
