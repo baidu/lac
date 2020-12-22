@@ -21,7 +21,6 @@
 import io
 import re
 import sys
-import time
 import logging
 from math import log
 
@@ -60,13 +59,8 @@ class Segment(object):
         self.dict_path = dict_path
         self.dag = {} 
         self.length = 0
-     
-        start_time = time.time()
 
         self.f_dict, self.logtotal = load_seg_dict(self.dict_path)
-
-        init_dict_time = time.time()
-        logging.info("Init Prefix Trie used {}s".format(init_dict_time - start_time))
     
     def fast_get_DAG(self, text):  
         """生成DAG"""

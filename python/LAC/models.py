@@ -124,8 +124,6 @@ class Model(object):
             sent = lines[sent_index]
             tags = [dataset.id2label_dict[str(id)]
                     for id in crf_decode[begin:end]]
-        
-            tags_for_rank = tags[:]
 
             # 重新填充被省略的单词的char部分
             word_length = words_length[sent_index]
@@ -147,7 +145,7 @@ class Model(object):
                 # 取最后一个tag作为标签	
                 tags_out[-1] = tag[:-2]
 
-            batch_out.append([sent_out, tags_out, tags_for_rank])
+            batch_out.append([sent_out, tags_out, [tags,word_length]])
         return batch_out
     
     def train(self, model_save_dir, train_data, test_data, iter_num, thread_num):
@@ -344,8 +342,13 @@ class RankModel(Model):
         for sent_index in range(batch_size):
             begin, end = offset_list[sent_index], offset_list[sent_index + 1]
 
-            tags = tags_for_rank[sent_index]
+            tags, word_length = tags_for_rank[sent_index]
             weight = rank_weight[begin:end]
+            # 重新填充被省略的单词的char部分
+            for current in range(len(word_length)-1, -1, -1):
+                for offset in range(1, word_length[current]):
+                    weight.insert(current + offset, weight[current])
+
             weight_out = []
             for ind, tag in enumerate(tags):
                 if tag.endswith("B") or tag.endswith("S"):
