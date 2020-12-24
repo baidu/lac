@@ -164,8 +164,7 @@ class Dataset(object):
                         for current in range(len(word_ids)):
                             if word_length[current] > 1:
                                 for _ in range(1, word_length[current]):
-                                    labels.pop(current)
-                                labels[current] = labels[current][:-1] + 'B'
+                                    labels.pop(current+1)
                     
                     label_ids = self.label_to_ids(labels)
 

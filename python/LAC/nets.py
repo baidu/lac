@@ -295,7 +295,6 @@ def do_train(args, dataset, segment_tool):
         os.environ['CPU_NUM'] = str(dev_count)
         place = fluid.CPUPlace()
 
-    # dataset = Dataset(args, dev_count)
     dataset.args = args
     dataset.dev_count = dev_count
     dataset.segment_tool = segment_tool
