@@ -324,7 +324,6 @@ class RankModel(Model):
         crf_result = lac_result["crf_result"]
         tensor_words = lac_result["tensor_words"]
         words_length = lac_result["words_length"]
-        
 
         result = [[word, tag] for word, tag, tag_for_rank in crf_result]
         tags_for_rank = [tag_for_rank for word, tag, tag_for_rank in crf_result]
@@ -348,7 +347,7 @@ class RankModel(Model):
             tags = tags_for_rank[sent_index]
             word_length = words_length[sent_index]
             weight = rank_weight[begin:end]
-            
+
             # 重新填充被省略的单词的char部分
             for current in range(len(word_length)-1, -1, -1):
                 for offset in range(1, word_length[current]):
