@@ -77,7 +77,8 @@ class Model(object):
         return {
                 "crf_decode": crf_decode,
                 "crf_result": crf_result,
-                "tensor_words": tensor_words
+                "tensor_words": tensor_words,
+                "words_length": words_length
                 }   
 
     def to_tensor(self, data, lod, dtype="int64"):
@@ -145,7 +146,7 @@ class Model(object):
                 # 取最后一个tag作为标签	
                 tags_out[-1] = tag[:-2]
 
-            batch_out.append([sent_out, tags_out, [tags,word_length]])
+            batch_out.append([sent_out, tags_out, tags])
         return batch_out
     
     def train(self, model_save_dir, train_data, test_data, iter_num, thread_num):
@@ -273,7 +274,7 @@ class SegModel(Model):
             sent = lines[sent_index]
             tags = [dataset.id2label_dict[str(id)]
                     for id in crf_decode[begin:end]]
-            tags_for_rank = tags[:]
+            tags_for_rank = []
 
             if self.custom:
                 self.custom.parse_customization(sent, tags)
@@ -322,17 +323,19 @@ class RankModel(Model):
         crf_decode = lac_result["crf_decode"]
         crf_result = lac_result["crf_result"]
         tensor_words = lac_result["tensor_words"]
+        words_length = lac_result["words_length"]
+        
 
         result = [[word, tag] for word, tag, tag_for_rank in crf_result]
         tags_for_rank = [tag_for_rank for word, tag, tag_for_rank in crf_result]
 
         rank_decode = self.predictor.run([tensor_words, crf_decode[0]])
-        weight = self.parse_result(tags_for_rank, rank_decode[0]) 
+        weight = self.parse_result(tags_for_rank, rank_decode[0], words_length) 
         result = [result[_] + [weight[_]] for _ in range(len(result))]
 
         return result if self.batch else result[0]
 
-    def parse_result(self, tags_for_rank, result):
+    def parse_result(self, tags_for_rank, result, words_length):
         """将RANK模型输出的Tensor转为明文"""
         offset_list = result.lod[0]
         rank_weight = result.data.int64_data()
@@ -342,8 +345,10 @@ class RankModel(Model):
         for sent_index in range(batch_size):
             begin, end = offset_list[sent_index], offset_list[sent_index + 1]
 
-            tags, word_length = tags_for_rank[sent_index]
+            tags = tags_for_rank[sent_index]
+            word_length = words_length[sent_index]
             weight = rank_weight[begin:end]
+            
             # 重新填充被省略的单词的char部分
             for current in range(len(word_length)-1, -1, -1):
                 for offset in range(1, word_length[current]):
