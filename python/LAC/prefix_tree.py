@@ -49,7 +49,7 @@ class TriedTree(object):
         result = []
         length = len(content)
         for start in range(length):
-            for end in range(start+1, length):
+            for end in range(start+1, length+1):
                 pos = self.tree.get(content[start:end], -1)
                 if pos == -1:
                     break
@@ -71,7 +71,7 @@ class TriedTree(object):
         
         length = len(content)
         for start in range(length):
-            for end in range(start+1, length):
+            for end in range(start+1, length+1):
                 pos = self.tree.get(content[start:end], -1)
                 if pos == -1:
                     break
