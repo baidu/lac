@@ -322,7 +322,7 @@ class RankModel(Model):
         lac_result = self.lac.call_run(texts)
         self.batch = self.lac.batch
 
-        if len(lac_result) == 1:
+        if len(lac_result) != 4:
             return lac_result["crf_result"]
         
         crf_decode = lac_result["crf_decode"]
