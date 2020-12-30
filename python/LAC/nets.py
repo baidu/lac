@@ -194,7 +194,7 @@ def create_model(args, vocab_size, num_labels, mode='train'):
     return ret
 
 
-def create_pyreader(args, file_name, feed_list, place, dev_count,
+def create_pyreader(args, file_name, feed_list, place,
                     reader=None, iterable=True, for_test=False):
     """创建PyReader用于Paddle读取数据
 
@@ -224,7 +224,7 @@ def create_pyreader(args, file_name, feed_list, place, dev_count,
         pyreader.decorate_sample_list_generator(
             paddle.batch(
                 reader.file_reader(file_name, mode='test'),
-                batch_size=args.batch_size / dev_count
+                batch_size=args.batch_size
             ),
             places=place
         )
@@ -235,7 +235,7 @@ def create_pyreader(args, file_name, feed_list, place, dev_count,
                     reader.file_reader(file_name),
                     buf_size=args.traindata_shuffle_buffer
                 ),
-                batch_size=args.batch_size / dev_count
+                batch_size=args.batch_size
             ),
             places=place
         )
@@ -316,14 +316,12 @@ def do_train(args, dataset, segment_tool):
     train_reader = create_pyreader(args, file_name=args.train_data,
                                    feed_list=train_ret['feed_list'],
                                    place=place,
-                                   dev_count = dev_count,
                                    reader=dataset)
     if args.test_data:
         test_reader = create_pyreader(args, file_name=args.test_data,
                                   feed_list=train_ret['feed_list'],
                                   place=place,
                                   reader=dataset,
-                                  dev_count = dev_count,
                                   iterable=True)
 
     exe = fluid.Executor(place)
