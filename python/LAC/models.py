@@ -34,8 +34,6 @@ from . import reader
 from .segment import Segment
 from .custom import Customization
 
-RETURN_NULL = [[], [], []]
-
 class Model(object):
     """Docstring for Model"""
     def __init__(self, model_path, mode, use_cuda):
@@ -69,27 +67,39 @@ class Model(object):
         self.segment_tool = None
         self.custom = None
         self.batch = False
-
+        
     def run(self, texts):
         """文本输入经过模型转为运行结果Tensor"""
-        tensor_words, words_length, null_string = self.texts2tensor(texts)
+        self.empty_string = []
+        self.empty_return = {"seg": [[]],
+                             "lac": [[], []],
+                             "rank":[[], [], []]
+                            }
 
-        if tensor_words is None:
+        if isinstance(texts, list) or isinstance(texts, tuple):
+            self.batch = True
+        else:
+            if len(texts.strip('\n\r')) == 0:
+                return self.empty_return[self.mode]
+            texts = [texts]
+            self.batch = False
+        
+        for i in range(len(texts)-1, -1, -1):
+            if len(texts[i].strip('\n\r')) == 0:
+                self.empty_string.append(i)
+                texts.pop(i)
+            
+        if len(texts) == 0:
             return {
-                    "crf_result": [RETURN_NULL] * len(texts)
+                    "crf_result": [self.empty_return["rank"]] * len(self.empty_string)
                     }
 
+        tensor_words, words_length = self.texts2tensor(texts)
         crf_decode = self.predictor.run([tensor_words])
-
-        if len(null_string) != 0:
-            for i in range(len(null_string)-1, -1, -1):
-                texts.pop(null_string[i])
-
         crf_result = self.parse_result(texts, crf_decode[0], self.dataset, words_length)
 
-        if len(null_string) != 0:
-            for null_idx in null_string:
-                crf_result.insert(null_idx, RETURN_NULL)
+        for _ in self.empty_string:
+            crf_result.insert(_, self.empty_return["rank"])
 
         return {
                 "crf_decode": crf_decode,
@@ -114,22 +124,19 @@ class Model(object):
             tensor: Paddle模型输入用的文本Tensor
             words_length: 记录送入模型的每一个单词的长度
         """
-        lod, data, words_length, null_string = [0], [], [], []
+        lod, data, words_length = [0], [], []
         for i, text in enumerate(texts):  
-            if len(text.strip('\n\r')) == 0:
-                null_string.append(i)
-                continue
 
             text = self.segment_tool.fast_cut(text)
             text_inds, word_length = self.dataset.text_to_ids(text)
             words_length.append(word_length)
 
             data += text_inds
-            lod.append(len(text_inds) + lod[i-len(null_string)])
+            lod.append(len(text_inds) + lod[i])
 
         tensor = self.to_tensor(data, lod) if len(data) != 0 else None
 
-        return tensor, words_length, null_string
+        return tensor, words_length
 
     def parse_result(self, lines, crf_decode, dataset, words_length):
         """将LAC模型输出的Tensor转为明文"""
@@ -230,18 +237,8 @@ class LacModel(Model):
         self.segment_tool = Segment(dict_path=seg_dict_path)
 
     def run(self, texts):
-        if isinstance(texts, list) or isinstance(texts, tuple):
-            self.batch = True
-        else:
-            if len(texts.strip('\n\r')) == 0:
-                return ([], [])
-            texts = [texts]
-            self.batch = False
-        
         crf_result = super(LacModel, self).run(texts)['crf_result']
-
         result = [[word, tag] for word, tag, tag_for_rank in crf_result] if self.batch else crf_result[0][:-1]
-
         return result
 
     def call_run(self, texts):
@@ -256,34 +253,22 @@ class SegModel(Model):
         self.dataset = reader.SegDataset(self.args)
     
     def run(self, texts):
-        if isinstance(texts, list) or isinstance(texts, tuple):
-            self.batch = True
-        else:
-            if len(texts.strip()) == 0:
-                return []
-            texts = [texts]
-            self.batch = False
-
         crf_result = super(SegModel, self).run(texts)["crf_result"]
-
         result = [word for word, tag, tag_for_rank in crf_result] if self.batch else crf_result[0][0]
         return result
     
     def texts2tensor(self, texts):
         """文本输入转为Paddle输入的Tensor"""
-        lod, data, words_length, null_string = [0], [], [], []
+        lod, data, words_length = [0], [], []
         for i, text in enumerate(texts):
-            if len(text.strip('\n\r')) == 0:
-                null_string.append(i)
-                continue
 
             text_inds = self.dataset.word_to_ids(text)
             data += text_inds
-            lod.append(len(text_inds) + lod[i-len(null_string)])
+            lod.append(len(text_inds) + lod[i])
 
         tensor = self.to_tensor(data, lod) if len(data) != 0 else None
 
-        return tensor, words_length, null_string
+        return tensor, words_length
     
     def parse_result(self, lines, crf_decode, dataset, words_length):
         """将SEG模型输出的Tensor转为明文"""
@@ -332,18 +317,11 @@ class RankModel(Model):
         self.lac = LacModel(model_path=lac_path, mode='lac', use_cuda=use_cuda) 
 
     def run(self, texts):
-        if isinstance(texts, list) or isinstance(texts, tuple):
-            self.batch = True
-        else:
-            if len(texts.strip('\n\r')) == 0:
-                return ([], [], [])
-            texts = [texts]
-            self.batch = False
-
         if self.custom is not None:
             self.lac.custom = self.custom
             
         lac_result = self.lac.call_run(texts)
+        self.batch = self.lac.batch
 
         if len(lac_result) == 1:
             return lac_result["crf_result"]
