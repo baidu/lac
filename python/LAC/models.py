@@ -71,6 +71,12 @@ class Model(object):
     def run(self, texts):
         """文本输入经过模型转为运行结果Tensor"""
         tensor_words, words_length = self.texts2tensor(texts)
+
+        if tensor_words is None:
+            return {
+                    "crf_result":  [[[], [], []]] * len(texts)
+                    }
+
         crf_decode = self.predictor.run([tensor_words])
         crf_result = self.parse_result(texts, crf_decode[0], self.dataset, words_length)
 
@@ -99,16 +105,15 @@ class Model(object):
         """
 
         lod, data, words_length = [0], [], []
-        for i, text in enumerate(texts): 
+        for i, text in enumerate(texts):      
             text = self.segment_tool.fast_cut(text)
-
             text_inds, word_length = self.dataset.text_to_ids(text)
             words_length.append(word_length)
 
             data += text_inds
             lod.append(len(text_inds) + lod[i])
 
-        tensor = self.to_tensor(data, lod)
+        tensor = self.to_tensor(data, lod) if len(data) != 0 else None
 
         return tensor, words_length
 
@@ -220,6 +225,7 @@ class LacModel(Model):
             self.batch = False
         
         crf_result = super(LacModel, self).run(texts)['crf_result']
+
         result = [[word, tag] for word, tag, tag_for_rank in crf_result] if self.batch else crf_result[0][:-1]
 
         return result
@@ -257,7 +263,7 @@ class SegModel(Model):
             data += text_inds
             lod.append(len(text_inds) + lod[i])
 
-        tensor = self.to_tensor(data, lod)
+        tensor = self.to_tensor(data, lod) if len(data) != 0 else None
 
         return tensor, words_length
     
@@ -290,6 +296,7 @@ class SegModel(Model):
                 # 取最后一个tag作为标签	
                 tags_out[-1] = tag[:-2]
 
+            sent_out = [''] if len(sent_out) == 0 else sent_out
             batch_out.append([sent_out, tags_out, tags_for_rank])
         return batch_out
 
@@ -319,6 +326,9 @@ class RankModel(Model):
             self.lac.custom = self.custom
             
         lac_result = self.lac.call_run(texts)
+
+        if len(lac_result) == 1:
+            return [[[], [], []]] * len(texts)
         
         crf_decode = lac_result["crf_decode"]
         crf_result = lac_result["crf_result"]
