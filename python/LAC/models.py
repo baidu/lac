@@ -328,7 +328,7 @@ class RankModel(Model):
         lac_result = self.lac.call_run(texts)
 
         if len(lac_result) == 1:
-            return [[[], [], []]] * len(texts)
+            return lac_result["crf_result"]
         
         crf_decode = lac_result["crf_decode"]
         crf_result = lac_result["crf_result"]
