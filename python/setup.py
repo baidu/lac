@@ -22,6 +22,7 @@ Setup script.
 
 from setuptools import setup
 import pkg_resources
+from io import open
 
 # 判断paddle安装版本，对版本进行设置
 install_requires = []
