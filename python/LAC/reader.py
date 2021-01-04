@@ -19,10 +19,11 @@
 """
 The file_reader converts raw corpus to input.
 """
-import argparse
-import logging
-import __future__
 import io
+import logging
+import argparse
+import __future__
+
 
 
 def load_kv_dict(dict_path,
@@ -49,7 +50,6 @@ def load_kv_dict(dict_path,
             result_dict[key] = value
     return result_dict
 
-
 class Dataset(object):
     """data reader"""
 
@@ -63,10 +63,11 @@ class Dataset(object):
         self.id2label_dict = load_kv_dict(args.label_dict_path)
         self.word_replace_dict = load_kv_dict(args.word_rep_dict_path)
         self.oov_id = self.word2id_dict['OOV']
-        self.tag_type = args.tag_type
+        self.model = args.model
 
         self.args = args
         self.dev_count = dev_count
+        self.segment_tool = None
 
     @property
     def vocab_size(self):
@@ -81,19 +82,6 @@ class Dataset(object):
     def get_num_examples(self, filename):
         """num of line of file"""
         return sum(1 for line in open(filename, "rb"))
-
-    def parse_seg(self, line):
-        """convert segment data to lac data format"""
-        tags = []
-        words = line.strip().split()
-
-        for word in words:
-            if len(word) == 1:
-                tags.append('-S')
-            else:
-                tags += ['-B'] + ['-I'] * (len(word) - 2) + ['-E']
-
-        return "".join(words), tags
 
     def parse_tag(self, line):
         """convert tagging data to lac data format"""
@@ -110,17 +98,34 @@ class Dataset(object):
             tags += [tag + '-B'] + [tag + '-I'] * (len(word) - 1)
             words.append(word)
 
-        return "".join(words), tags
-
+        return self.segment_tool.fast_cut("".join(words)), tags
+    
     def word_to_ids(self, words):
-        """convert word to word index"""
+        """convert words to word index"""
+
         word_ids = []
         for word in words:
             word = self.word_replace_dict.get(word, word)
             word_id = self.word2id_dict.get(word, self.oov_id)
             word_ids.append(word_id)
-
         return word_ids
+
+    def text_to_ids(self, text):
+        """convert text to word index 
+           lac/rank using mix char and word granularity
+           seg using char granularity
+        """
+        word_ids, word_length = [], []
+
+        for word in text: 
+            if word in self.word2id_dict:
+                word_ids += self.word_to_ids([word])
+                word_length.append(len(word))
+            else:
+                word_ids += self.word_to_ids(word)
+                word_length += [1] * len(word)
+
+        return word_ids, word_length
 
     def label_to_ids(self, labels):
         """convert label to label index"""
@@ -150,17 +155,19 @@ class Dataset(object):
                 for line in fread:
                     if (len(line.strip()) == 0):
                         continue
-                    if self.tag_type == 'seg':
-                        words, labels = self.parse_seg(line)
-                    elif self.tag_type == 'tag':
-                        words, labels = self.parse_tag(line)
-                    else:
-                        words, labels = line.strip("\n").split("\t")
-                        words = words.split("\002")
-                        labels = labels.split("\002")
+                        
+                    texts, labels = self.parse_tag(line)
+                    word_ids, word_length = self.text_to_ids(texts)
 
-                    word_ids = self.word_to_ids(words)
+                    # 删掉以词粒度处理的多余的词性标签
+                    if len(word_length) != 0:
+                        for current in range(len(word_ids)):
+                            if word_length[current] > 1:
+                                for _ in range(1, word_length[current]):
+                                    labels.pop(current+1)
+                    
                     label_ids = self.label_to_ids(labels)
+
                     assert len(word_ids) == len(label_ids)
                     yield word_ids, label_ids
                     cnt += 1
@@ -169,14 +176,31 @@ class Dataset(object):
                     pad_num = self.dev_count - \
                         (cnt % self.args.batch_size) % self.dev_count
                     for i in range(pad_num):
-                        if self.tag_type == 'seg':
+                        if self.model == 'seg':
                             yield [self.oov_id], [self.label2id_dict['-S']]
-                        else:
+                        elif self.model == 'lac':
                             yield [self.oov_id], [self.label2id_dict['O']]
             fread.close()
 
         return wrapper
 
+class SegDataset(Dataset):
+    """seg model data reader"""
+    def __init__(self, args, dev_count=10):
+        Dataset.__init__(self, args, dev_count)
+    
+    def parse_tag(self, line):
+        """convert segment data to lac data format"""
+        tags = []
+        words = line.strip().split()
+
+        for word in words:
+            if len(word) == 1:
+                tags.append('-S')
+            else:
+                tags += ['-B'] + ['-I'] * (len(word) - 2) + ['-E']
+
+        return "".join(words), tags
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(__doc__)

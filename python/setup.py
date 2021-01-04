@@ -46,12 +46,12 @@ except ImportError:
     install_requires = ['paddlepaddle>=1.6']
 
 
-with open("README.md", "r", encoding='utf8') as fh:
-   long_description = fh.read()
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup(
     name="LAC",
-    version="2.0.5",
+    version="2.1.0",
     author="Baidu NLP",
     author_email="nlp-fenci@baidu.com",
     description="A chinese lexical analysis tool by Baidu NLP.",
@@ -61,7 +61,7 @@ setup(
     install_requires=install_requires,
     packages=['LAC'],
     package_dir={'LAC': 'LAC'},
-    package_data={'LAC': ['*.py', 'lac_model/*/*', 'seg_model/*/*']},
+    package_data={'LAC': ['*.py', 'lac_model/*/*', 'seg_model/*/*', 'rank_model/*/*']},
     platforms="any",
     license='Apache 2.0',
     keywords=('lac chinese lexical analysis'),

@@ -23,12 +23,12 @@
 import os
 import math
 
-import paddle.fluid as fluid
 import paddle
 import multiprocessing
+import paddle.fluid as fluid
 
-from .reader import Dataset
 from . import utils
+from .reader import Dataset
 
 
 def lex_net(word, args, vocab_size, num_labels, target=None):
@@ -273,7 +273,7 @@ def test_process(exe, program, reader, test_ret):
           % (precision, recall, f1))
 
 
-def do_train(args):
+def do_train(args, dataset, segment_tool):
     """执行训练过程
 
     Args:
@@ -295,7 +295,9 @@ def do_train(args):
         os.environ['CPU_NUM'] = str(dev_count)
         place = fluid.CPUPlace()
 
-    dataset = Dataset(args, dev_count)
+    dataset.args = args
+    dataset.dev_count = dev_count
+    dataset.segment_tool = segment_tool
 
     with fluid.program_guard(train_program, startup_program):
         train_program.random_seed = args.random_seed
@@ -327,6 +329,7 @@ def do_train(args):
 
     if args.init_checkpoint:
         utils.init_pretraining_params(exe, args.init_checkpoint, train_program)
+
     if args.test_data:
         test_process(exe, test_program, test_reader, train_ret)
     if dev_count > 1:
@@ -342,7 +345,6 @@ def do_train(args):
     else:
         compiled_prog = fluid.compiler.CompiledProgram(train_program)
 
-    step = 0
     fetch_list = []
     for epoch_id in range(args.epoch):
         for data in train_reader():
@@ -351,7 +353,7 @@ def do_train(args):
                 fetch_list=fetch_list,
                 feed=data[0],
             )
-            step += 1
+
     if args.test_data:
         test_process(exe, test_program, test_reader, train_ret)
     return test_program, train_ret['crf_decode']
