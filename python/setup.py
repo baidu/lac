@@ -22,7 +22,6 @@ Setup script.
 
 from setuptools import setup
 import pkg_resources
-from io import open
 
 # 判断paddle安装版本，对版本进行设置
 install_requires = []
@@ -46,8 +45,8 @@ except ImportError:
     install_requires = ['paddlepaddle>=1.6']
 
 
-# with open("README.md", "r") as fh:
-#    long_description = fh.read()
+with open("README.md", "r") as fh:
+    long_description = fh.read()
 
 setup(
     name="LAC",
@@ -55,7 +54,7 @@ setup(
     author="Baidu NLP",
     author_email="nlp-fenci@baidu.com",
     description="A chinese lexical analysis tool by Baidu NLP.",
-    # long_description=long_description,
+    long_description=long_description,
     long_description_content_type="text/markdown",
     url="https://github.com/baidu/lac",
     install_requires=install_requires,
