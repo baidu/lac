@@ -46,7 +46,7 @@ except ImportError:
     install_requires = ['paddlepaddle>=1.6']
 
 
-with open("README.md", "r") as fh:
+with open("README.md", "r", encoding='utf8') as fh:
     long_description = fh.read()
 
 setup(
