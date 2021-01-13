@@ -23,8 +23,10 @@ import re
 import sys
 import logging
 from math import log
-
-from .prefix_tree import TriedTree
+try:
+    from .prefix_tree import TriedTree
+except:
+    from prefix_tree import TriedTree
 
 
 re_eng = re.compile('[a-zA-Z0-9]', re.U)
@@ -71,7 +73,7 @@ class Segment(object):
             end_word = head_word + 1
             word = text[head_word:end_word]
 
-            while end_word < self.length and word in self.f_dict:
+            while end_word <= self.length and word in self.f_dict:
                 if self.f_dict[word]:
                     self.dag[head_word].append(end_word-1)
                 end_word += 1
