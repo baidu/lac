@@ -23,10 +23,8 @@ import re
 import sys
 import logging
 from math import log
-try:
-    from .prefix_tree import TriedTree
-except:
-    from prefix_tree import TriedTree
+
+from .prefix_tree import TriedTree
 
 
 re_eng = re.compile('[a-zA-Z0-9]', re.U)
