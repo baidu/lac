@@ -365,7 +365,7 @@ class RankModel(Model):
 
             weight_out = []
             for ind, tag in enumerate(tags):
-                if tag.endswith("B") or tag.endswith("S"):
+                if len(weight_out) == 0 or tag.endswith("B") or tag.endswith("S"):
                     weight_out.append(weight[ind])
                     continue
                 weight_out[-1] = max(weight_out[-1], weight[ind])
